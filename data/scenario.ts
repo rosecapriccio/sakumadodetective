@@ -51,13 +51,37 @@ export const scenario: Record<string, Command[]> = {
       face: "smile",
       text: "「こっちは安全そうだ。」",
     },
+    {
+      type: "text",
+      charaId: "madoka",
+      face: "smile",
+      text: "「ああああああああああああああ」",
+    },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "smile",
+      text: "「全然もうええわ。」",
+    },
   ],
   scene_left: [
     {
       type: "text",
+      // charaId: "sakuya",
+      // face: "angry",
+      text: "「うわっ！罠だ！」",
+    },
+    {
+      type: "text",
       charaId: "sakuya",
       face: "angry",
-      text: "「うわっ！罠だ！」",
+      text: "いや変人で結構",
+    },
+    {
+      type: "text",
+      charaId: "madoka",
+      face: "angry",
+      text: "「葛藤と格闘してました？」",
     },
   ],
 };
