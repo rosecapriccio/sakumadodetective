@@ -65,6 +65,21 @@ export default function NovelGame() {
     localStorage.setItem("my_novel_autosave", JSON.stringify(saveData));
   }, [currentScene, currentLine, currentScreen]); // ←「この3つのどれかが変化したら実行してね」という指示
 
+  // ▼ 追加：ゲーム起動時に、立ち絵の画像を裏でコッソリ全ダウンロードしておく魔法
+  useEffect(() => {
+    // リポジトリ名（basePathで設定したもの）を変数にしておく
+    const basePath = "/sakumadodetective"; // ※ご自身のリポジトリ名に合わせてください！
+
+    // キャラクター辞書の中から、すべての画像のパスを取り出す
+    Object.values(CHARA_DB).forEach((chara) => {
+      Object.values(chara.faces).forEach((imagePath) => {
+        // Javascriptの「裏側で画像を読み込む専用の機能」を使う
+        const img = new Image();
+        img.src = `${basePath}${imagePath}`;
+      });
+    });
+  }, []); // [] なので、ゲームを開いた最初の1回だけ実行される
+
   // ▼ 追加：セリフが切り替わったときに、文字を1文字ずつ流す処理
   useEffect(() => {
     if (currentScreen !== "game") return;
