@@ -68,7 +68,7 @@ export default function NovelGame() {
   const preloadedImages = useRef<HTMLImageElement[]>([]);
   // ▼ 修正：ゲーム起動時のプリロード処理
   useEffect(() => {
-    const basePath = "/pasta-game"; // ※ご自身のリポジトリ名
+    //const basePath = "/sakumadodetective"; // ※ご自身のリポジトリ名
 
     Object.values(CHARA_DB).forEach((chara) => {
       Object.values(chara.faces).forEach((imagePath) => {
@@ -76,7 +76,7 @@ export default function NovelGame() {
 
         // ★重要：パスの繋ぎ目に / が2個重なったりしないように注意！
         // もし imagePath が '/images/...' で始まっているなら、このままでOKです
-        img.src = `${basePath}${imagePath}`;
+        img.src = `${imagePath}`;
 
         // ▼ 追加：読み込んだ画像を「箱」に保管して、ブラウザに捨てさせない！
         preloadedImages.current.push(img);
