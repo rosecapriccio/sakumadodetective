@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+
+  basePath: "/sakumadodetective",
 };
 
 export default nextConfig;
