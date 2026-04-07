@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
   },
 
   basePath: "/sakumadodetective",
+
+  // ▼ 追加：ビルドした瞬間の「日本時間」を自動で記録する！
+  env: {
+    NEXT_PUBLIC_BUILD_TIME: new Date().toLocaleString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+    }),
+  },
 };
 
 export default nextConfig;

@@ -65,20 +65,24 @@ export default function NovelGame() {
     localStorage.setItem("my_novel_autosave", JSON.stringify(saveData));
   }, [currentScene, currentLine, currentScreen]); // ←「この3つのどれかが変化したら実行してね」という指示
 
-  // ▼ 追加：ゲーム起動時に、立ち絵の画像を裏でコッソリ全ダウンロードしておく魔法
+  const preloadedImages = useRef<HTMLImageElement[]>([]);
+  // ▼ 修正：ゲーム起動時のプリロード処理
   useEffect(() => {
-    // リポジトリ名（basePathで設定したもの）を変数にしておく
-    const basePath = "/sakumadodetective"; // ※ご自身のリポジトリ名に合わせてください！
+    const basePath = "/pasta-game"; // ※ご自身のリポジトリ名
 
-    // キャラクター辞書の中から、すべての画像のパスを取り出す
     Object.values(CHARA_DB).forEach((chara) => {
       Object.values(chara.faces).forEach((imagePath) => {
-        // Javascriptの「裏側で画像を読み込む専用の機能」を使う
         const img = new Image();
+
+        // ★重要：パスの繋ぎ目に / が2個重なったりしないように注意！
+        // もし imagePath が '/images/...' で始まっているなら、このままでOKです
         img.src = `${basePath}${imagePath}`;
+
+        // ▼ 追加：読み込んだ画像を「箱」に保管して、ブラウザに捨てさせない！
+        preloadedImages.current.push(img);
       });
     });
-  }, []); // [] なので、ゲームを開いた最初の1回だけ実行される
+  }, []);
 
   // ▼ 追加：セリフが切り替わったときに、文字を1文字ずつ流す処理
   useEffect(() => {
@@ -250,6 +254,20 @@ export default function NovelGame() {
               続きから
             </button>
           )}
+        </div>
+        {/* ▼ 追加：画面の右下にひっそりと更新日時を表示する */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "5px",
+            right: "10px",
+            fontSize: "0.7rem", // 邪魔にならないように小さく
+            color: "rgba(255, 255, 255, 0.4)", // 半透明にして目立たなくする
+            fontFamily: "sans-serif", // 数字が見やすいフォント
+          }}
+        >
+          {/* さっき config で設定した時間を呼び出して表示する */}
+          Update: {process.env.NEXT_PUBLIC_BUILD_TIME}
         </div>
       </div>
     );
