@@ -279,6 +279,13 @@ export default function NovelGame() {
         boxShadow: "0 0 20px rgba(0,0,0,0.5)", // PCで見たときにスマホっぽく浮き出させる影
       }}
     >
+      {/* ▼ 追加1：ピョコピョコ動くアニメーションの定義 */}
+      <style>{`
+        @keyframes bounce-fade {
+          0%, 100% { transform: translateY(0); opacity: 1; }
+          50% { transform: translateY(3px); opacity: 0.3; }
+        }
+      `}</style>
       {/* 立ち絵の表示エリア */}
       {displayImage && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -333,6 +340,22 @@ export default function NovelGame() {
         {/* セリフ本文 */}
         <div style={{ fontSize: "1.05rem", lineHeight: "1.7" }}>
           {displayedText}
+
+          {/* ▼ 追加2：クリック待ちアイコン */}
+          {/* 文字が全て出終わっていて、かつ選択肢が無い時だけ表示する */}
+          {displayedText === currentData.text && !currentData.choices && (
+            <span
+              style={{
+                display: "inline-block",
+                animation: "bounce-fade 1s infinite", // さっき作ったアニメーションを無限ループ
+                marginLeft: "8px",
+                color: "#ffcc00", // ちょっと目立つ色（金色など）
+                fontSize: "0.9rem",
+              }}
+            >
+              ▼
+            </span>
+          )}
         </div>
 
         {/* 選択肢ボタンエリア */}
