@@ -1,8 +1,8 @@
 "use client"; // ← これを一番上に追加！
 
-import React, { useState, useEffect, useRef } from "react";
-import { CHARA_DB } from "../data/characters";
-import { scenario } from "../data/scenario";
+import { useState, useEffect, useRef } from "react";
+import { CHARA_DB } from "./data/characters";
+import { scenario } from "./data/scenario";
 
 type ScreenState = "title" | "game" | "settings" | "ending";
 
@@ -267,7 +267,7 @@ export default function NovelGame() {
           }}
         >
           {/* さっき config で設定した時間を呼び出して表示する */}
-          Update: {process.env.NEXT_PUBLIC_BUILD_TIME}
+          Update: {"1.0.0"}
         </div>
       </div>
     );
@@ -321,7 +321,6 @@ export default function NovelGame() {
       `}</style>
       {/* 立ち絵の表示エリア */}
       {displayImage && (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={displayImage}
           alt="character"
