@@ -83,6 +83,12 @@ export const scenario: Record<string, Command[]> = {
       face: "angry",
       text: "「葛藤と格闘してました？」",
     },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "angry",
+      text: "ありがとうあじゃ絶対無理やろもうていんあああああああああああああ",
+    },
   ],
 };
 
