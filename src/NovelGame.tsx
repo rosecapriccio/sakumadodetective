@@ -14,96 +14,108 @@ export default function NovelGame() {
   const [hasSaveData, setHasSaveData] = useState(false);
 
   const typingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // --- 状態管理 (Reactのキモ) ---
   const [currentScene, setCurrentScene] =
-    useState<keyof typeof scenario>("start"); // 現在のシーン
-  const [currentLine, setCurrentLine] = useState<number>(0); // 現在のセリフ番号
+    useState<keyof typeof scenario>("start");
+  const [currentLine, setCurrentLine] = useState<number>(0); // 統合：これ一つで行数を管理します
 
-  const [displayedText, setDisplayedText] = useState<string>(""); // 今画面に表示されている文字
-  const [isTyping, setIsTyping] = useState<boolean>(false); // 文字が流れている最中かどうか
-
-  // ▼ 追加1：今まで読んだセリフの履歴を保存する配列（リスト）
+  const [displayedText, setDisplayedText] = useState<string>("");
+  const [isTyping, setIsTyping] = useState<boolean>(false);
   const [logList, setLogList] = useState<{ name?: string; text: string }[]>([]);
-
-  // ▼ 追加2：ログ画面が開いているかどうかのスイッチ
   const [isLogOpen, setIsLogOpen] = useState<boolean>(false);
+
+  // 背景とテキストデータの状態
+  const [currentBg, setCurrentBg] = useState<string>("");
+  const [isFading, setIsFading] = useState<boolean>(false);
 
   const sceneData = scenario[currentScene];
   const currentData = sceneData[currentLine];
 
-  const characterInfo = currentData.charaId
-    ? CHARA_DB[currentData.charaId]
-    : null;
+  useEffect(() => {
+    if (!currentData || currentScreen !== "game") return;
 
-  // 表示する名前（辞書の名前を優先）
-  const displayName = characterInfo ? characterInfo.name : currentData.name;
+    if (currentData.type === "bg") {
+      // 1. まず画面を真っ黒にする（フェードアウト開始）
+      setIsFading(true);
 
-  // 表示する画像パス（辞書の中から、指定された表情faceのパスを取り出す）
-  const displayImage =
-    characterInfo && currentData.face
-      ? characterInfo.faces[currentData.face]
+      // 2. 0.5秒（500ミリ秒）待って、画面が真っ黒になった裏で背景画像を差し替える
+      setTimeout(() => {
+        setCurrentBg(currentData.bg);
+        // 画面の黒幕を外す（フェードイン開始）
+        setIsFading(false);
+
+        // 3. さらに0.5秒待って、景色が完全に見えたら次の行へ進む
+        setTimeout(() => {
+          setCurrentLine((prev) => prev + 1);
+        }, 1000);
+      }, 1000);
+    }
+  }, [currentLine, currentScene, currentScreen, currentData]);
+
+  // キャラクター情報の取得
+  let displayName = "";
+  let displayImage = null;
+
+  if (currentData && currentData.type !== "bg") {
+    const characterInfo = currentData.charaId
+      ? CHARA_DB[currentData.charaId]
       : null;
+    displayName = characterInfo ? characterInfo.name : currentData.name || "";
+    displayImage =
+      characterInfo && currentData.face
+        ? characterInfo.faces[currentData.face]
+        : null;
+  }
 
+  // セーブデータの確認
   useEffect(() => {
     const savedDataString = localStorage.getItem("my_novel_autosave");
     if (savedDataString) {
-      setHasSaveData(true); // セーブデータを発見！
+      setHasSaveData(true);
     }
   }, []);
 
-  // 1. オートセーブ機能（監視カメラ）
+  // オートセーブ機能（背景情報も一緒に保存すると復帰時に真っ黒になりません）
   useEffect(() => {
-    // タイトル画面や設定画面にいる時はセーブしない
     if (currentScreen !== "game") return;
-
-    // 保存するデータをまとめる
     const saveData = {
       scene: currentScene,
       line: currentLine,
+      bg: currentBg, // ▼ 修正2：セーブデータに今の背景も記録する
     };
-    // 'my_novel_autosave' という名前で、ブラウザのメモ帳に上書き保存！
     localStorage.setItem("my_novel_autosave", JSON.stringify(saveData));
-  }, [currentScene, currentLine, currentScreen]); // ←「この3つのどれかが変化したら実行してね」という指示
+  }, [currentScene, currentLine, currentScreen, currentBg]);
 
   const preloadedImages = useRef<HTMLImageElement[]>([]);
-  // ▼ 修正：ゲーム起動時のプリロード処理
-  useEffect(() => {
-    //const basePath = "/sakumadodetective"; // ※ご自身のリポジトリ名
 
+  // プリロード処理
+  useEffect(() => {
     Object.values(CHARA_DB).forEach((chara) => {
       Object.values(chara.faces).forEach((imagePath) => {
         const img = new Image();
-
-        // ★重要：パスの繋ぎ目に / が2個重なったりしないように注意！
-        // もし imagePath が '/images/...' で始まっているなら、このままでOKです
         img.src = `${imagePath}`;
-
-        // ▼ 追加：読み込んだ画像を「箱」に保管して、ブラウザに捨てさせない！
         preloadedImages.current.push(img);
       });
     });
   }, []);
 
-  // ▼ 追加：セリフが切り替わったときに、文字を1文字ずつ流す処理
+  // ▼ 修正3：文字送り処理（bgコマンドの時は動かさないよう安全対策）
   useEffect(() => {
-    if (currentScreen !== "game") return;
-    // セリフが変わるたびに、表示テキストを空にしてタイピング開始状態にする
+    if (currentScreen !== "game" || !currentData || currentData.type === "bg")
+      return;
+
     setDisplayedText("");
     setIsTyping(true);
 
     let currentText = "";
     let currentIndex = 0;
-
-    const textArray = Array.from(currentData.text);
-
-    // let currentIndex = 0;
-    // const fullText = currentData.text;
+    // テキストが無い場合のクラッシュ防止
+    const textArray = Array.from(currentData.text || "");
 
     typingTimer.current = setInterval(() => {
       if (currentIndex < textArray.length) {
-        // 自分たちの手元で1文字ずつ足していく
         currentText += textArray[currentIndex];
-        // 出来上がった文字列をそのままReactに渡す（絶対に削れない！）
         setDisplayedText(currentText);
         currentIndex++;
       } else {
@@ -112,63 +124,51 @@ export default function NovelGame() {
       }
     }, 50);
 
-    // 次のセリフに行くときや、コンポーネントが消えるときにタイマーをお掃除する（バグ防止）
     return () => {
       if (typingTimer.current) clearInterval(typingTimer.current);
     };
-  }, [currentLine, currentScene, currentScreen]);
+  }, [currentLine, currentScene, currentScreen, currentData]);
 
-  // 2. 「最初から」遊ぶ時の処理
+  // 「最初から」遊ぶ時の処理
   const handleStartNewGame = () => {
-    // 古いオートセーブのデータを完全に消去！
     localStorage.removeItem("my_novel_autosave");
-
-    // ゲームの初期状態をセット
     setCurrentScene("start");
     setCurrentLine(0);
+    setCurrentBg(""); // 背景もリセット
     setDisplayedText("");
-
-    // 画面をゲーム本編に切り替える
     setCurrentScreen("game");
   };
 
-  // 3. 「続きから」遊ぶ時の処理
+  // 「続きから」遊ぶ時の処理
   const handleContinueGame = () => {
-    // メモ帳からデータを引っ張り出す
     const savedDataString = localStorage.getItem("my_novel_autosave");
-
     if (savedDataString) {
-      // 文字列を元のオブジェクトに戻す
       const saveData = JSON.parse(savedDataString);
-
-      // 読み込んだデータで、今のシーンと行数を上書きする（ワープ！）
       setCurrentScene(saveData.scene);
       setCurrentLine(saveData.line);
+      setCurrentBg(saveData.bg || ""); // 背景を復元
       setDisplayedText("");
     }
-
-    // 画面をゲーム本編に切り替える
     setCurrentScreen("game");
   };
 
-  // --- イベントハンドラ ---
-  // ▼ 変更：クリックしたときの処理（スキップ機能の追加）
+  // クリックしたときの処理（次へ）
   const handleNext = () => {
     if (isLogOpen) return;
-
-    if (currentData.choices) return;
+    if (!currentData || currentData.type === "bg") return; // bg処理中はクリック無効
+    if (currentData.choices) return; // 選択肢がある時はクリック無効
 
     if (isTyping) {
-      // パターンA：文字が流れている途中にクリックされたら、一気に全文字表示する
+      // 文字が流れている途中にクリック：一気に全文字表示
       if (typingTimer.current) clearInterval(typingTimer.current);
-      setDisplayedText(currentData.text);
+      setDisplayedText(currentData.text || "");
       setIsTyping(false);
     } else {
-      // パターンB：文字が全部出終わっている状態なら、次のセリフへ進む
+      // 全文字出終わっている：次のセリフへ
       if (currentLine < sceneData.length - 1) {
         setLogList((prev) => [
           ...prev,
-          { name: displayName, text: currentData.text },
+          { name: displayName, text: currentData.text || "" },
         ]);
         setDisplayedText("");
         setCurrentLine((prev) => prev + 1);
@@ -178,26 +178,23 @@ export default function NovelGame() {
 
   // 選択肢を選んだときの処理
   const handleChoice = (choice: { label: string; nextScene: string }) => {
-    // 1. 質問文（今表示されているセリフ）をログに追加
-    // 2. 自分が選んだ選択肢も、分かりやすく「▶」などを付けてログに追加
+    if (!currentData || currentData.type !== "text") return;
     setLogList((prev) => [
       ...prev,
-      { name: displayName, text: currentData.text },
-      { text: `▶ 【選択】${choice.label}` }, // 自分の選択として記録
+      { name: displayName, text: currentData.text || "" },
+      { text: `▶ 【選択】${choice.label}` },
     ]);
-
-    // 3. 画面リセットとシーン移動
     setDisplayedText("");
     setCurrentScene(choice.nextScene as keyof typeof scenario);
     setCurrentLine(0);
   };
 
-  // 画面の振り分け（ルーティング）
+  // 画面の振り分け
   if (currentScreen === "title") {
     return (
       <div
         style={{
-          position: "relative", // ★追加1：中の absolute がこの枠外に逃げないようにする！
+          position: "relative",
           width: "100%",
           maxWidth: "430px",
           aspectRatio: "9/16",
@@ -205,32 +202,29 @@ export default function NovelGame() {
           backgroundColor: "#111",
           color: "white",
           fontFamily: "serif",
-          overflow: "hidden", // ★追加2：万が一はみ出しても枠外を隠す
-          // ※ absolute で配置するため、flex 関連の記述は削除してスッキリさせました
+          overflow: "hidden",
+          userSelect: "none",
         }}
       >
-        {/* ▼ タイトルの配置 */}
         <h1
           style={{
             position: "absolute",
-            top: "20%", // ★追加：上から20%の位置に配置
+            top: "20%",
             left: "50%",
             transform: "translateX(-50%)",
             fontSize: "2rem",
-            width: "100%", // 文字が折り返さないように幅を確保
-            textAlign: "center", // 中央揃え
-            margin: 0, // marginBottomは不要になったので削除
+            width: "100%",
+            textAlign: "center",
+            margin: 0,
             letterSpacing: "0.1em",
           }}
         >
           『終焉とパスタの狂詩曲』
         </h1>
-
-        {/* ▼ ボタンエリアの配置 */}
         <div
           style={{
             position: "absolute",
-            bottom: "25%", // ★追加：下から25%の位置に配置
+            bottom: "25%",
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
@@ -245,7 +239,6 @@ export default function NovelGame() {
           >
             最初から
           </button>
-
           {hasSaveData && (
             <button
               onClick={handleContinueGame}
@@ -255,18 +248,16 @@ export default function NovelGame() {
             </button>
           )}
         </div>
-        {/* ▼ 追加：画面の右下にひっそりと更新日時を表示する */}
         <div
           style={{
             position: "absolute",
             bottom: "5px",
             right: "10px",
-            fontSize: "0.7rem", // 邪魔にならないように小さく
-            color: "rgba(255, 255, 255, 0.4)", // 半透明にして目立たなくする
-            fontFamily: "sans-serif", // 数字が見やすいフォント
+            fontSize: "0.7rem",
+            color: "rgba(255, 255, 255, 0.4)",
+            fontFamily: "sans-serif",
           }}
         >
-          {/* さっき config で設定した時間を呼び出して表示する */}
           Update: {"1.0.0"}
         </div>
       </div>
@@ -276,7 +267,7 @@ export default function NovelGame() {
   if (currentScreen === "settings") {
     return (
       <div>
-        <h1>設定画面（音量とか）</h1>
+        <h1>設定画面</h1>
         <button onClick={() => setCurrentScreen("title")}>
           タイトルに戻る
         </button>
@@ -284,158 +275,197 @@ export default function NovelGame() {
     );
   }
 
+  // もしデータが存在しない場合はエラーを防ぐため空っぽの画面を出して守る
+  if (!currentData)
+    return <div style={{ backgroundColor: "#000", height: "100vh" }} />;
+
   return (
     <div
       onClick={handleNext}
       style={{
         position: "relative",
         width: "100%",
-        // 変更点1: 横幅の最大値をスマホサイズ（iPhone Pro Max等の幅）に制限
         maxWidth: "430px",
-        // 変更点2: アスペクト比をスマホの縦長（9:16）に変更
         aspectRatio: "9/16",
-        // 変更点3: 画面の高さをスマホのブラウザにピッタリ合わせる
-        //height: "100dvh",
-        //maxHeight: "100dvh",
-        // backgroundColor: currentData.bgImage?.startsWith("#")
-        //   ? currentData.bgImage
-        //   : "#000",
-        // backgroundImage:
-        //   currentData.bgImage && !currentData.bgImage.startsWith("#")
-        //     ? `url(${currentData.bgImage})`
-        //     : "none",
+        backgroundImage: currentBg ? `url(${currentBg})` : "none", // ▼ 修正4：背景画像をここで適用！
+        backgroundColor: "#000",
         backgroundSize: "cover",
         backgroundPosition: "center",
-        margin: "0 auto", // PCで見たときは画面の中央に配置される
+        margin: "0 auto",
         overflow: "hidden",
-        cursor: currentData.choices ? "default" : "pointer",
-        boxShadow: "0 0 20px rgba(0,0,0,0.5)", // PCで見たときにスマホっぽく浮き出させる影
+        cursor:
+          currentData.type === "text" && currentData.choices
+            ? "default"
+            : "pointer",
+        boxShadow: "0 0 20px rgba(0,0,0,0.5)",
+        userSelect: "none",
       }}
     >
-      {/* ▼ 追加1：ピョコピョコ動くアニメーションの定義 */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundColor: "black",
+          // isFadingがtrueなら不透明(1)、falseなら透明(0)
+          opacity: isFading ? 1 : 0,
+          // 0.5秒かけてフワッと変化させるCSSの魔法
+          transition: "opacity 0.5s ease-in-out",
+          zIndex: 200, // 画面の全要素（立ち絵やUI）より手前に被せる
+          pointerEvents: "none", // これが無いとクリックを吸い取ってゲームが進行しなくなるので必須！
+        }}
+      />
+      {/* 立ち絵 */}
+      {displayImage && currentData.type !== "bg" && (
+        <img
+          src={displayImage}
+          alt="character"
+          style={{
+            position: "absolute",
+            bottom: "25%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            height: "60%",
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        />
+      )}
+
+      {/* カットイン */}
+      {currentData.type === "text" && currentData.cutin && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            zIndex: 50,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <img
+            src={`${currentData.cutin}`}
+            alt="cutin"
+            style={{
+              maxWidth: "80%",
+              maxHeight: "80%",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+            }}
+          />
+        </div>
+      )}
+
       <style>{`
         @keyframes bounce-fade {
           0%, 100% { transform: translateY(0); opacity: 1; }
           50% { transform: translateY(3px); opacity: 0.3; }
         }
       `}</style>
-      {/* 立ち絵の表示エリア */}
-      {displayImage && (
-        <img
-          src={displayImage}
-          alt="character"
+      {/* メッセージウィンドウ (bgコマンドの時は隠す) */}
+      {currentData.type !== "bg" && (
+        <div
           style={{
+            zIndex: 100,
             position: "absolute",
-            bottom: "25%", // メッセージウィンドウの少し上（隠れない位置）に配置
+            bottom: "3%",
             left: "50%",
             transform: "translateX(-50%)",
-            height: "60%", // 画面の高さの60%のサイズにする（画像の大きさに合わせて調整してください）
-            //objectFit: "contain", // 画像の縦横比を崩さずに綺麗に収める
-            pointerEvents: "none", // ★超重要：画像自体がクリック判定を吸い取らないようにする魔法
-            userSelect: "none", // スマホで長押しした時に画像が選択されるのを防ぐ
-            //WebkitUserDrag: "none", // PCで画像をドラッグできないようにする
+            width: "94%",
+            height: "25%",
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            color: "#fff",
+            borderRadius: "12px",
+            padding: "15px",
+            boxSizing: "border-box",
+            border: "2px solid rgba(255, 255, 255, 0.4)",
           }}
-        />
-      )}
-
-      {/* メッセージウィンドウ */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "3%", // スマホの下端ギリギリに配置
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "94%", // スマホ画面いっぱいまで広げる
-          height: "25%", // 縦画面は横幅が狭いので、テキストが改行されやすい分、高さを確保
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
-          color: "#fff",
-          borderRadius: "12px", // スマホっぽく丸みを強くする
-          padding: "15px",
-          boxSizing: "border-box",
-          border: "2px solid rgba(255, 255, 255, 0.4)",
-        }}
-      >
-        {/* 名前表示欄 */}
-        {displayName && (
-          <div
-            style={{
-              fontSize: "1.1rem",
-              fontWeight: "bold",
-              marginBottom: "8px",
-              color: "#4db8ff",
-            }}
-          >
-            {displayName}
-          </div>
-        )}
-
-        {/* セリフ本文 */}
-        <div style={{ fontSize: "1.05rem", lineHeight: "1.7" }}>
-          {displayedText}
-
-          {/* ▼ 追加2：クリック待ちアイコン */}
-          {/* 文字が全て出終わっていて、かつ選択肢が無い時だけ表示する */}
-          {displayedText === currentData.text && !currentData.choices && (
-            <span
+        >
+          {displayName && (
+            <div
               style={{
-                display: "inline-block",
-                animation: "bounce-fade 1s infinite", // さっき作ったアニメーションを無限ループ
-                marginLeft: "8px",
-                color: "#ffcc00", // ちょっと目立つ色（金色など）
-                fontSize: "0.9rem",
+                fontSize: "1.1rem",
+                fontWeight: "bold",
+                marginBottom: "8px",
+                color: "#4db8ff",
               }}
             >
-              ▼
-            </span>
+              {displayName}
+            </div>
           )}
-        </div>
 
-        {/* 選択肢ボタンエリア */}
-        {currentData.choices && displayedText === currentData.text && (
-          <div
-            style={{
-              position: "absolute",
-              top: "-180%", // スマホ画面に合わせて選択肢の位置を調整
-              left: "50%",
-              transform: "translateX(-50%)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              width: "80%", // 選択肢のボタンを押しやすいように横幅を広げる
-            }}
-          >
-            {currentData.choices.map((choice, index) => (
-              <button
-                key={index}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // ★変更：choice オブジェクトごと渡すようにする
-                  handleChoice(choice);
-                }}
+          <div style={{ fontSize: "1.05rem", lineHeight: "1.7" }}>
+            {displayedText}
+            {displayedText === currentData.text && !currentData.choices && (
+              <span
                 style={{
-                  padding: "15px 20px", // スマホの指でタップしやすいように上下の余白（padding）を大きく
-                  fontSize: "1.1rem",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  borderRadius: "8px",
-                  border: "2px solid #fff",
-                  backgroundColor: "rgba(0, 0, 0, 0.85)",
-                  color: "#fff",
-                  transition: "background-color 0.2s",
+                  display: "inline-block",
+                  animation: "bounce-fade 1s infinite",
+                  marginLeft: "8px",
+                  color: "#ffcc00",
+                  fontSize: "0.9rem",
                 }}
               >
-                {choice.label}
-              </button>
-            ))}
+                ▼
+              </span>
+            )}
           </div>
-        )}
-      </div>
-      {/* ========================================== */}
-      {/* ▼ 追加：ログを開くボタン（画面の右上などに配置） */}
-      {/* ========================================== */}
+
+          {currentData.choices && displayedText === currentData.text && (
+            <div
+              style={{
+                position: "absolute",
+                top: "-180%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                width: "80%",
+              }}
+            >
+              {currentData.choices.map(
+                (
+                  choice: { label: string; nextScene: string },
+                  index: number,
+                ) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleChoice(choice);
+                    }}
+                    style={{
+                      padding: "15px 20px",
+                      fontSize: "1.1rem",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      borderRadius: "8px",
+                      border: "2px solid #fff",
+                      backgroundColor: "rgba(0, 0, 0, 0.85)",
+                      color: "#fff",
+                      transition: "background-color 0.2s",
+                    }}
+                  >
+                    {choice.label}
+                  </button>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ログボタン */}
       <button
         onClick={(e) => {
-          e.stopPropagation(); // クリックが下の画面に貫通してゲームが進むのを防ぐ
+          e.stopPropagation();
           setIsLogOpen(true);
         }}
         style={{
@@ -448,15 +478,13 @@ export default function NovelGame() {
           border: "1px solid white",
           borderRadius: "5px",
           cursor: "pointer",
-          zIndex: 10, // ちょっと手前に持ってくる
+          zIndex: 10,
         }}
       >
         ログ
       </button>
 
-      {/* ========================================== */}
-      {/* ▼ 追加：ログ画面のオーバーレイ（isLogOpen が true の時だけ被さる） */}
-      {/* ========================================== */}
+      {/* ログ画面 */}
       {isLogOpen && (
         <div
           style={{
@@ -465,16 +493,15 @@ export default function NovelGame() {
             left: 0,
             width: "100%",
             height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.85)", // 背景を半透明の黒にして被せる
+            backgroundColor: "rgba(0, 0, 0, 0.85)",
             color: "white",
-            zIndex: 100, // 一番手前に表示する
+            zIndex: 100,
             display: "flex",
             flexDirection: "column",
             padding: "20px",
             boxSizing: "border-box",
           }}
         >
-          {/* 閉じるボタン */}
           <div style={{ textAlign: "right", marginBottom: "10px" }}>
             <button
               onClick={(e) => {
@@ -490,15 +517,13 @@ export default function NovelGame() {
               閉じる
             </button>
           </div>
-
-          {/* ログの履歴一覧（スクロールできるエリア） */}
           <div
             style={{
-              flex: 1, // 残りの高さをすべて使う
-              overflowY: "auto", // 縦にスクロール可能にする！
+              flex: 1,
+              overflowY: "auto",
               display: "flex",
               flexDirection: "column",
-              gap: "15px", // 履歴ごとの隙間
+              gap: "15px",
               paddingRight: "10px",
             }}
           >

@@ -6,21 +6,29 @@ export type ChoiceOption = {
 };
 
 // 2. 台本1行分のルール（型）を定義する
-export type Command = {
-  type: "text";
-  name?: string; // 辞書を使わないモブキャラ用の名前（?は「無くてもいい」の意味）
-
-  // ▼ ここが最大のポイント！
-  // charaId は単なる string ではなく、「CharacterId ('hero' | 'idol') しか絶対に許さない！」と縛る
-  charaId?: CharacterId;
-
-  face?: FaceType;
-  text: string;
-  choices?: ChoiceOption[];
-};
+export type Command =
+  | {
+      type: "text";
+      text: string; // ◀ ?は付けない！textの時は絶対にある
+      name?: string;
+      charaId?: CharacterId;
+      face?: FaceType;
+      choices?: ChoiceOption[];
+      cutin?: string;
+    }
+  | {
+      type: "bg";
+      bg: string; // ◀ ?は付けない！bgの時は絶対にある
+    };
 
 export const scenario: Record<string, Command[]> = {
   start: [
+    {
+      type: "bg",
+      //charaId: "madoka",
+      //face: "normal",
+      bg: "/sakumadodetective/images/bg/venue.png",
+    },
     {
       type: "text",
       //charaId: "madoka",
@@ -32,6 +40,12 @@ export const scenario: Record<string, Command[]> = {
       charaId: "sakuya",
       face: "normal",
       text: "「プロデューサーさん、お疲れ様ですっ！」",
+    },
+    {
+      type: "text",
+      name: "",
+      text: "泥にまみれた、古ぼけた石板だった。",
+      cutin: "/sakumadodetective/images/cutin/koitogame.png",
     },
     {
       type: "text",
@@ -50,6 +64,12 @@ export const scenario: Record<string, Command[]> = {
       charaId: "sakuya",
       face: "smile",
       text: "「こっちは安全そうだ。」",
+    },
+    {
+      type: "bg",
+      //charaId: "madoka",
+      //face: "normal",
+      bg: "/sakumadodetective/images/bg/warehouse.png",
     },
     {
       type: "text",
