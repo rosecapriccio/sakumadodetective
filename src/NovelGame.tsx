@@ -5,6 +5,7 @@ import { CHARA_DB } from "./data/characters";
 import { ITEM_DB } from "./data/items";
 import type { Hotspot } from "./data/scenario";
 import { scenario } from "./data/scenario";
+import TitleScreen from "./components/TitleScreen";
 
 type ScreenState = "title" | "game" | "settings" | "ending";
 type GameMode = "dialogue" | "investigation";
@@ -39,6 +40,7 @@ export default function NovelGame() {
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [logList, setLogList] = useState<{ name?: string; text: string }[]>([]);
   const [isLogOpen, setIsLogOpen] = useState<boolean>(false);
+  const [fullText, setFullText] = useState<string>("");
 
   // 初期状態は空っぽ
   const [ownedItems, setOwnedItems] = useState<string[]>([]);
@@ -51,6 +53,29 @@ export default function NovelGame() {
 
   const sceneData = scenario[currentScene];
   const currentData = sceneData[currentLine];
+
+  const triggerTyping = (text: string) => {
+    if (typingTimer.current) clearInterval(typingTimer.current);
+
+    setFullText(text); // フルテキストを保存
+    setDisplayedText("");
+    setIsTyping(true);
+
+    let currentText = "";
+    let currentIndex = 0;
+    const textArray = Array.from(text);
+
+    typingTimer.current = setInterval(() => {
+      if (currentIndex < textArray.length) {
+        currentText += textArray[currentIndex];
+        setDisplayedText(currentText);
+        currentIndex++;
+      } else {
+        setIsTyping(false);
+        if (typingTimer.current) clearInterval(typingTimer.current);
+      }
+    }, 50);
+  };
 
   useEffect(() => {
     if (!currentData || currentScreen !== "game") return;
@@ -151,34 +176,15 @@ export default function NovelGame() {
     });
   }, []);
 
-  // ▼ 修正3：文字送り処理（bgコマンドの時は動かさないよう安全対策）
   useEffect(() => {
-    if (currentScreen !== "game" || !currentData || currentData.type !== "text")
-      return;
-
-    setDisplayedText("");
-    setIsTyping(true);
-
-    let currentText = "";
-    let currentIndex = 0;
-    // テキストが無い場合のクラッシュ防止
-    const textArray = Array.from(currentData.text || "");
-
-    typingTimer.current = setInterval(() => {
-      if (currentIndex < textArray.length) {
-        currentText += textArray[currentIndex];
-        setDisplayedText(currentText);
-        currentIndex++;
-      } else {
-        setIsTyping(false);
-        if (typingTimer.current) clearInterval(typingTimer.current);
-      }
-    }, 50);
-
-    return () => {
-      if (typingTimer.current) clearInterval(typingTimer.current);
-    };
-  }, [currentLine, currentScene, currentScreen, currentData]);
+    if (
+      currentScreen === "game" &&
+      currentData?.type === "text" &&
+      gameMode === "dialogue"
+    ) {
+      triggerTyping(currentData.text);
+    }
+  }, [currentLine, currentScene, currentScreen]);
 
   // 「最初から」遊ぶ時の処理
   const handleStartNewGame = () => {
@@ -207,13 +213,21 @@ export default function NovelGame() {
   const handleNext = () => {
     if (isLogOpen || isItemMenuOpen) return;
     // ▼ 探索モード中の処理を追加
+    // --- 探索モード中の挙動 ---
     if (gameMode === "investigation") {
-      // ウィンドウが表示されていて、かつタイピングが終わっているなら、クリックで閉じる
-      if (showMessageWindow && !isTyping) {
+      if (!showMessageWindow) return; // ウィンドウが出てない時は無視
+
+      if (isTyping) {
+        // 1回目：タイピング中なら一気に全表示
+        if (typingTimer.current) clearInterval(typingTimer.current);
+        setDisplayedText(fullText);
+        setIsTyping(false);
+      } else {
+        // 2回目：終わってたらウィンドウを閉じる
         setShowMessageWindow(false);
         setDisplayedText("");
       }
-      return; // 探索中は背景クリックで次のセリフへ行くのを防ぐ
+      return;
     }
 
     if (!currentData || currentData.type !== "text") return; // bg処理中はクリック無効
@@ -253,75 +267,11 @@ export default function NovelGame() {
   // 画面の振り分け
   if (currentScreen === "title") {
     return (
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: "430px",
-          aspectRatio: "9/16",
-          margin: "0 auto",
-          backgroundColor: "#111",
-          color: "white",
-          fontFamily: "serif",
-          overflow: "hidden",
-          userSelect: "none",
-        }}
-      >
-        <h1
-          style={{
-            position: "absolute",
-            top: "20%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            fontSize: "2rem",
-            width: "100%",
-            textAlign: "center",
-            margin: 0,
-            letterSpacing: "0.1em",
-          }}
-        >
-          『終焉とパスタの狂詩曲』
-        </h1>
-        <div
-          style={{
-            position: "absolute",
-            bottom: "25%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "20px",
-            width: "200px",
-          }}
-        >
-          <button
-            onClick={handleStartNewGame}
-            style={{ padding: "15px", fontSize: "1.2rem", cursor: "pointer" }}
-          >
-            最初から
-          </button>
-          {hasSaveData && (
-            <button
-              onClick={handleContinueGame}
-              style={{ padding: "15px", fontSize: "1.2rem", cursor: "pointer" }}
-            >
-              続きから
-            </button>
-          )}
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            bottom: "5px",
-            right: "10px",
-            fontSize: "0.7rem",
-            color: "rgba(255, 255, 255, 0.4)",
-            fontFamily: "sans-serif",
-          }}
-        >
-          Update: {"1.0.0"}
-        </div>
-      </div>
+      <TitleScreen
+        onStartNewGame={handleStartNewGame}
+        onContinueGame={handleContinueGame}
+        hasSaveData={hasSaveData}
+      />
     );
   }
 
@@ -388,22 +338,7 @@ export default function NovelGame() {
               e.stopPropagation(); // 背景のクリック進行を防ぐ
 
               setShowMessageWindow(true); // メッセージをセットすると同時にウィンドウを出す！
-
-              // 1. タイピングアニメーションを停止してメッセージを一気に表示
-              if (typingTimer.current) clearInterval(typingTimer.current);
-              setIsTyping(false);
-              setDisplayedText(h.text); // テキストウィンドウにメッセージを出す
-
-              // 2. もし追加のアクションがあれば処理
-              if (h.itemId) {
-                /* setOwnedItems処理など */
-              }
-              if (h.nextScene) {
-                // 会話パートへ強制移動
-                setCurrentScene(h.nextScene);
-                setCurrentLine(0);
-                setGameMode("dialogue"); // モードを戻す
-              }
+              triggerTyping(h.text);
             }}
             style={{
               position: "absolute",
@@ -512,22 +447,19 @@ export default function NovelGame() {
 
           <div style={{ fontSize: "1.05rem", lineHeight: "1.7" }}>
             {displayedText}
-            {currentData.type === "text" &&
-              displayedText === currentData.text &&
-              currentData.type === "text" &&
-              !currentData.choices && (
-                <span
-                  style={{
-                    display: "inline-block",
-                    animation: "bounce-fade 1s infinite",
-                    marginLeft: "8px",
-                    color: "#ffcc00",
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  ▼
-                </span>
-              )}
+            {!isTyping && displayedText !== "" && (
+              <span
+                style={{
+                  display: "inline-block",
+                  animation: "bounce-fade 1s infinite",
+                  marginLeft: "8px",
+                  color: "#ffcc00",
+                  fontSize: "0.9rem",
+                }}
+              >
+                ▼
+              </span>
+            )}
           </div>
 
           {currentData.type === "text" &&
@@ -635,7 +567,7 @@ export default function NovelGame() {
             height: "100%",
             backgroundColor: "rgba(0, 0, 0, 0.85)",
             color: "white",
-            zIndex: 100,
+            zIndex: 500,
             display: "flex",
             flexDirection: "column",
             padding: "20px",
@@ -720,7 +652,7 @@ export default function NovelGame() {
             height: "100%",
             backgroundColor: "rgba(0, 0, 20, 0.95)", // 少し青みのある黒でミステリーっぽく
             color: "white",
-            zIndex: 200,
+            zIndex: 500,
             display: "flex",
             flexDirection: "column",
             padding: "20px",
