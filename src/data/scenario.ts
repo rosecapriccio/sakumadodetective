@@ -5,6 +5,17 @@ export type ChoiceOption = {
   nextScene: string;
 };
 
+export type Hotspot = {
+  id: string;
+  percentX: number;
+  percentY: number;
+  percentWidth: number;
+  percentHeight: number;
+  text: string;
+  itemId?: string; // アイテムを手に入れるなら
+  nextScene?: string; // 別のシーンへ飛ぶなら
+};
+
 // 2. 台本1行分のルール（型）を定義する
 export type Command =
   | {
@@ -19,6 +30,22 @@ export type Command =
   | {
       type: "bg";
       bg: string; // ◀ ?は付けない！bgの時は絶対にある
+    }
+  | {
+      type: "get_item";
+      //text: string;
+      itemId: string;
+    }
+  | {
+      type: "start_investigation";
+      //text: string;
+      exploreScene: string;
+    }
+  | {
+      type: "investigation";
+      bg: string;
+      //exploreScene: string;
+      hotspots: Hotspot[];
     };
 
 export const scenario: Record<string, Command[]> = {
@@ -43,9 +70,20 @@ export const scenario: Record<string, Command[]> = {
     },
     {
       type: "text",
+      charaId: "sakuya",
+      face: "normal",
+      text: "これを見てください！",
+    },
+    {
+      type: "text",
       name: "",
       text: "泥にまみれた、古ぼけた石板だった。",
-      cutin: "/sakumadodetective/images/cutin/koitogame.png",
+      cutin: "/sakumadodetective/images/cutin/houki.png",
+    },
+    {
+      type: "get_item",
+      //text: "ほうきを手に入れた",
+      itemId: "houki",
     },
     {
       type: "text",
@@ -77,6 +115,12 @@ export const scenario: Record<string, Command[]> = {
       face: "smile",
       text: "「ああああああああああああああ」",
     },
+    { type: "start_investigation", exploreScene: "crime_scene" },
+    {
+      type: "get_item",
+      //text: "ほうきを手に入れた",
+      itemId: "koito",
+    },
     {
       type: "text",
       charaId: "sakuya",
@@ -90,6 +134,11 @@ export const scenario: Record<string, Command[]> = {
       // charaId: "sakuya",
       // face: "angry",
       text: "「うわっ！罠だ！」",
+    },
+    {
+      type: "get_item",
+      //text: "ほうきを手に入れた",
+      itemId: "knife",
     },
     {
       type: "text",
@@ -108,6 +157,38 @@ export const scenario: Record<string, Command[]> = {
       charaId: "sakuya",
       face: "angry",
       text: "ありがとうあじゃ絶対無理やろもうていんあああああああああああああ",
+    },
+  ],
+  crime_scene: [
+    {
+      type: "investigation",
+      bg: "/sakumadodetective/images/bg/warehouse.png",
+      hotspots: [
+        {
+          id: "sticker2",
+          percentX: 89,
+          percentY: 48,
+          percentWidth: 15,
+          percentHeight: 15,
+          text: "壁に紙が貼ってある。暗号が書かれている",
+        },
+        {
+          id: "sticker1",
+          percentX: 14,
+          percentY: 56,
+          percentWidth: 16,
+          percentHeight: 14,
+          text: "ダンボールに紙が貼ってある",
+        },
+        {
+          id: "window",
+          percentX: 63,
+          percentY: 47,
+          percentWidth: 27,
+          percentHeight: 16,
+          text: "窓の外は雨が降っている。誰も通った形跡はない。",
+        },
+      ],
     },
   ],
 };

@@ -2,9 +2,17 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CHARA_DB } from "./data/characters";
+import { ITEM_DB } from "./data/items";
+import type { Hotspot } from "./data/scenario";
 import { scenario } from "./data/scenario";
 
 type ScreenState = "title" | "game" | "settings" | "ending";
+type GameMode = "dialogue" | "investigation";
+type ExplorationData = {
+  type: "investigation";
+  bg: string;
+  hotspots: Hotspot[];
+};
 
 // ==========================================
 // 3. ゲームコンポーネント本体
@@ -20,10 +28,22 @@ export default function NovelGame() {
     useState<keyof typeof scenario>("start");
   const [currentLine, setCurrentLine] = useState<number>(0); // 統合：これ一つで行数を管理します
 
+  // ▼ 追加1：ゲームモード（デフォルトは会話）
+  const [gameMode, setGameMode] = useState<GameMode>("dialogue");
+  // ▼ 追加2：今の探索シーンの定義を保存する
+  const [exploreDefinition, setExploreDefinition] = useState<ExplorationData>();
+  // NovelGame.tsx 内
+  const [showMessageWindow, setShowMessageWindow] = useState<boolean>(true); // 初期値はtrue（会話から始まるため）
+
   const [displayedText, setDisplayedText] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [logList, setLogList] = useState<{ name?: string; text: string }[]>([]);
   const [isLogOpen, setIsLogOpen] = useState<boolean>(false);
+
+  // 初期状態は空っぽ
+  const [ownedItems, setOwnedItems] = useState<string[]>([]);
+  const [isItemMenuOpen, setIsItemMenuOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   // 背景とテキストデータの状態
   const [currentBg, setCurrentBg] = useState<string>("");
@@ -34,6 +54,28 @@ export default function NovelGame() {
 
   useEffect(() => {
     if (!currentData || currentScreen !== "game") return;
+
+    // --- 探索パート開始コマンド (ここを追加！) ---
+    if (currentData.type === "start_investigation") {
+      const exploreSceneId = currentData.exploreScene;
+      const exploreDef = scenario[exploreSceneId][0]; // scenario[exploreSceneId]
+
+      if (exploreDef && exploreDef.type === "investigation") {
+        // この中では、TypeScriptが「exploreDefは探索データだ！」と確信してくれます
+        setGameMode("investigation");
+        setShowMessageWindow(false); // 探索が始まったらウィンドウを消す！
+        setExploreDefinition(exploreDef); // これでエラーが消えるはず
+        setCurrentBg(exploreDef.bg); // これもOK！
+      } else {
+        console.error("指定されたシーンは探索データではありませんでした");
+      }
+
+      // テキストウィンドウを一旦クリア
+      setDisplayedText("");
+
+      // この useEffect はここで終わり（setCurrentLineはしない）
+      return;
+    }
 
     if (currentData.type === "bg") {
       // 1. まず画面を真っ黒にする（フェードアウト開始）
@@ -50,6 +92,15 @@ export default function NovelGame() {
           setCurrentLine((prev) => prev + 1);
         }, 1000);
       }, 1000);
+    } else if (currentData.type === "get_item") {
+      // 既に持っていないかチェックして追加
+      setOwnedItems((prev) => {
+        if (prev.includes(currentData.itemId)) return prev; // 持ってたらそのまま
+        return [...prev, currentData.itemId]; // 新規追加
+      });
+
+      // アイテムを手に入れたら、即座に次の行（「〇〇を手に入れた！」というテキスト等）へ進む
+      setCurrentLine((prev) => prev + 1);
     }
   }, [currentLine, currentScene, currentScreen, currentData]);
 
@@ -57,7 +108,7 @@ export default function NovelGame() {
   let displayName = "";
   let displayImage = null;
 
-  if (currentData && currentData.type !== "bg") {
+  if (currentData && currentData.type === "text") {
     const characterInfo = currentData.charaId
       ? CHARA_DB[currentData.charaId]
       : null;
@@ -102,7 +153,7 @@ export default function NovelGame() {
 
   // ▼ 修正3：文字送り処理（bgコマンドの時は動かさないよう安全対策）
   useEffect(() => {
-    if (currentScreen !== "game" || !currentData || currentData.type === "bg")
+    if (currentScreen !== "game" || !currentData || currentData.type !== "text")
       return;
 
     setDisplayedText("");
@@ -154,9 +205,19 @@ export default function NovelGame() {
 
   // クリックしたときの処理（次へ）
   const handleNext = () => {
-    if (isLogOpen) return;
-    if (!currentData || currentData.type === "bg") return; // bg処理中はクリック無効
-    if (currentData.choices) return; // 選択肢がある時はクリック無効
+    if (isLogOpen || isItemMenuOpen) return;
+    // ▼ 探索モード中の処理を追加
+    if (gameMode === "investigation") {
+      // ウィンドウが表示されていて、かつタイピングが終わっているなら、クリックで閉じる
+      if (showMessageWindow && !isTyping) {
+        setShowMessageWindow(false);
+        setDisplayedText("");
+      }
+      return; // 探索中は背景クリックで次のセリフへ行くのを防ぐ
+    }
+
+    if (!currentData || currentData.type !== "text") return; // bg処理中はクリック無効
+    if (currentData.type === "text" && currentData.choices) return; // 選択肢がある時はクリック無効
 
     if (isTyping) {
       // 文字が流れている途中にクリック：一気に全文字表示
@@ -317,6 +378,50 @@ export default function NovelGame() {
           pointerEvents: "none", // これが無いとクリックを吸い取ってゲームが進行しなくなるので必須！
         }}
       />
+
+      {gameMode === "investigation" &&
+        exploreDefinition &&
+        exploreDefinition.hotspots.map((h: Hotspot) => (
+          <div
+            key={h.id}
+            onClick={(e) => {
+              e.stopPropagation(); // 背景のクリック進行を防ぐ
+
+              setShowMessageWindow(true); // メッセージをセットすると同時にウィンドウを出す！
+
+              // 1. タイピングアニメーションを停止してメッセージを一気に表示
+              if (typingTimer.current) clearInterval(typingTimer.current);
+              setIsTyping(false);
+              setDisplayedText(h.text); // テキストウィンドウにメッセージを出す
+
+              // 2. もし追加のアクションがあれば処理
+              if (h.itemId) {
+                /* setOwnedItems処理など */
+              }
+              if (h.nextScene) {
+                // 会話パートへ強制移動
+                setCurrentScene(h.nextScene);
+                setCurrentLine(0);
+                setGameMode("dialogue"); // モードを戻す
+              }
+            }}
+            style={{
+              position: "absolute",
+              // %指定で位置とサイズを決める
+              left: `${h.percentX - h.percentWidth / 2}%`, // 中心点を合わせるための計算
+              top: `${h.percentY - h.percentHeight / 2}%`,
+              width: `${h.percentWidth}%`,
+              height: `${h.percentHeight}%`,
+              cursor: "pointer",
+
+              // --- 開発時用のヒント ---
+              backgroundColor: "rgba(255, 0, 0, 0.3)", // 赤い半透明にして領域を見えるようにする
+              border: "2px solid red",
+              zIndex: 150, // 立ち絵やウィンドウより手前
+            }}
+          />
+        ))}
+
       {/* 立ち絵 */}
       {displayImage && currentData.type !== "bg" && (
         <img
@@ -369,7 +474,8 @@ export default function NovelGame() {
         }
       `}</style>
       {/* メッセージウィンドウ (bgコマンドの時は隠す) */}
-      {currentData.type !== "bg" && (
+      {(currentData.type == "text" ||
+        currentData.type == "start_investigation") && (
         <div
           style={{
             zIndex: 100,
@@ -385,6 +491,10 @@ export default function NovelGame() {
             padding: "15px",
             boxSizing: "border-box",
             border: "2px solid rgba(255, 255, 255, 0.4)",
+            display: showMessageWindow ? "block" : "none", // シンプルに消すならこれ
+            // opacity: showMessageWindow ? 1 : 0, // フワッと消したいならこっち
+            // transition: "opacity 0.3s",
+            pointerEvents: showMessageWindow ? "auto" : "none", // 消えている時は下のクリックを邪魔しない
           }}
         >
           {displayName && (
@@ -402,87 +512,117 @@ export default function NovelGame() {
 
           <div style={{ fontSize: "1.05rem", lineHeight: "1.7" }}>
             {displayedText}
-            {displayedText === currentData.text && !currentData.choices && (
-              <span
-                style={{
-                  display: "inline-block",
-                  animation: "bounce-fade 1s infinite",
-                  marginLeft: "8px",
-                  color: "#ffcc00",
-                  fontSize: "0.9rem",
-                }}
-              >
-                ▼
-              </span>
-            )}
+            {currentData.type === "text" &&
+              displayedText === currentData.text &&
+              currentData.type === "text" &&
+              !currentData.choices && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    animation: "bounce-fade 1s infinite",
+                    marginLeft: "8px",
+                    color: "#ffcc00",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  ▼
+                </span>
+              )}
           </div>
 
-          {currentData.choices && displayedText === currentData.text && (
-            <div
-              style={{
-                position: "absolute",
-                top: "-180%",
-                left: "50%",
-                transform: "translateX(-50%)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-                width: "80%",
-              }}
-            >
-              {currentData.choices.map(
-                (
-                  choice: { label: string; nextScene: string },
-                  index: number,
-                ) => (
-                  <button
-                    key={index}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleChoice(choice);
-                    }}
-                    style={{
-                      padding: "15px 20px",
-                      fontSize: "1.1rem",
-                      fontWeight: "bold",
-                      cursor: "pointer",
-                      borderRadius: "8px",
-                      border: "2px solid #fff",
-                      backgroundColor: "rgba(0, 0, 0, 0.85)",
-                      color: "#fff",
-                      transition: "background-color 0.2s",
-                    }}
-                  >
-                    {choice.label}
-                  </button>
-                ),
-              )}
-            </div>
-          )}
+          {currentData.type === "text" &&
+            currentData.choices &&
+            displayedText === currentData.text && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "-180%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  width: "80%",
+                }}
+              >
+                {currentData.choices.map(
+                  (
+                    choice: { label: string; nextScene: string },
+                    index: number,
+                  ) => (
+                    <button
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleChoice(choice);
+                      }}
+                      style={{
+                        padding: "15px 20px",
+                        fontSize: "1.1rem",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        borderRadius: "8px",
+                        border: "2px solid #fff",
+                        backgroundColor: "rgba(0, 0, 0, 0.85)",
+                        color: "#fff",
+                        transition: "background-color 0.2s",
+                      }}
+                    >
+                      {choice.label}
+                    </button>
+                  ),
+                )}
+              </div>
+            )}
         </div>
       )}
 
       {/* ログボタン */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsLogOpen(true);
-        }}
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          padding: "8px 15px",
-          backgroundColor: "rgba(0,0,0,0.6)",
-          color: "white",
-          border: "1px solid white",
-          borderRadius: "5px",
-          cursor: "pointer",
-          zIndex: 10,
-        }}
-      >
-        ログ
-      </button>
+      {currentData.type !== "bg" && (
+        <div
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            display: "flex",
+            gap: "10px",
+            zIndex: 10,
+          }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsLogOpen(true);
+            }}
+            style={{
+              padding: "8px 15px",
+              backgroundColor: "rgba(0,0,0,0.6)",
+              color: "white",
+              border: "1px solid white",
+              borderRadius: "5px",
+              cursor: "pointer",
+            }}
+          >
+            ログ
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsItemMenuOpen(true);
+            }}
+            style={{
+              padding: "8px 15px",
+              backgroundColor: "rgba(0,50,100,0.6)",
+              color: "white",
+              border: "1px solid #4db8ff",
+              borderRadius: "5px",
+              cursor: "pointer",
+            }}
+          >
+            証拠品
+          </button>
+        </div>
+      )}
 
       {/* ログ画面 */}
       {isLogOpen && (
@@ -563,6 +703,182 @@ export default function NovelGame() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* 証拠品リスト画面 */}
+      {/* ========================================== */}
+      {isItemMenuOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 20, 0.95)", // 少し青みのある黒でミステリーっぽく
+            color: "white",
+            zIndex: 200,
+            display: "flex",
+            flexDirection: "column",
+            padding: "20px",
+            boxSizing: "border-box",
+          }}
+        >
+          {/* ヘッダー */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              borderBottom: "2px solid #4db8ff",
+              paddingBottom: "10px",
+              marginBottom: "20px",
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: "1.2rem", color: "#4db8ff" }}>
+              証拠品・情報リスト
+            </h2>
+            <button
+              onClick={() => {
+                setIsItemMenuOpen(false);
+                setSelectedItemId(null);
+              }}
+              style={{ padding: "5px 15px", cursor: "pointer" }}
+            >
+              閉じる
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flex: 1,
+              gap: "15px",
+              overflow: "hidden",
+            }}
+          >
+            {/* 左側：持っているアイテムのボタン一覧 */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                display: "grid",
+                gridTemplateColumns: "1fr",
+                gap: "10px",
+                alignContent: "start",
+              }}
+            >
+              {ownedItems.length === 0 ? (
+                <div
+                  style={{
+                    color: "#888",
+                    textAlign: "center",
+                    marginTop: "20px",
+                  }}
+                >
+                  まだ情報がありません
+                </div>
+              ) : (
+                ownedItems.map((id) => (
+                  <button
+                    key={id}
+                    onClick={() => setSelectedItemId(id)}
+                    style={{
+                      padding: "12px",
+                      textAlign: "left",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                      backgroundColor:
+                        selectedItemId === id
+                          ? "#4db8ff"
+                          : "rgba(255,255,255,0.1)",
+                      color: selectedItemId === id ? "black" : "white",
+                      border: "1px solid rgba(255,255,255,0.3)",
+                      borderRadius: "5px",
+                    }}
+                  >
+                    {ITEM_DB[id]?.name || "???"}
+                  </button>
+                ))
+              )}
+            </div>
+
+            {/* 右側：選択中アイテムの詳細表示 */}
+            <div
+              style={{
+                flex: 1.2,
+                backgroundColor: "rgba(255,255,255,0.05)",
+                padding: "15px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              {selectedItemId ? (
+                <div>
+                  <div
+                    style={{
+                      width: "100%",
+                      aspectRatio: "1/1",
+                      backgroundColor: "#000",
+                      marginBottom: "15px",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      border: "1px solid #4db8ff",
+                    }}
+                  >
+                    {/* 画像がある場合は表示、なければ仮のテキスト */}
+                    {ITEM_DB[selectedItemId].image ? (
+                      <img
+                        src={ITEM_DB[selectedItemId].image}
+                        style={{ maxWidth: "90%", maxHeight: "90%" }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: "0.8rem", color: "#4db8ff" }}>
+                        NO IMAGE
+                      </span>
+                    )}
+                  </div>
+                  <h3
+                    style={{
+                      margin: "0 0 10px 0",
+                      fontSize: "1.1rem",
+                      borderBottom: "1px solid #4db8ff",
+                    }}
+                  >
+                    {ITEM_DB[selectedItemId].name}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.85rem",
+                      lineHeight: "1.6",
+                      color: "#ddd",
+                    }}
+                  >
+                    {ITEM_DB[selectedItemId].description}
+                  </p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#666",
+                    fontSize: "0.9rem",
+                    textAlign: "center",
+                  }}
+                >
+                  証拠品を選択して
+                  <br />
+                  ください
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
