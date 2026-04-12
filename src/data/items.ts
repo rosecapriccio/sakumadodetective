@@ -1,4 +1,11 @@
-export const ITEM_DB = {
+// 1. まず、アイテム1つ分の型を定義
+type ItemData = {
+  name: string;
+  description: string;
+  image: string;
+};
+
+export const ITEM_DB: Record<string, ItemData> = {
   houki: {
     name: "ほうき",
     description: "ほうき。部屋のドアにつっかけていて開けなくしていたらしい",
