@@ -1,0 +1,98 @@
+/* TitleScreen.module.css */
+
+.wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  aspect-ratio: 9/16;
+  margin: 0 auto;
+  background-image: url('/images/title_bg.png');
+  background-size: cover;
+  background-position: center;
+  background-color: #111;
+  color: white;
+  font-family: serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+.fadeLayer {
+  animation: fadeIn 2s ease-out forwards;
+  height: 100%;
+  position: relative;
+}
+
+/* .dust {
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+
+  animation-name: dustAnim; 
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+
+  animation-duration: var(--duration);
+  animation-delay: var(--delay);
+} */
+
+.title {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2.2rem;
+  width: 100%;
+  text-align: center;
+  margin: 0;
+  letter-spacing: 0.15em;
+  color: #fff;
+  animation: slideUp 1.5s ease-out 0.5s forwards, titleGlow 4s infinite 2s;
+  opacity: 0;
+}
+
+.buttonGroup {
+  position: absolute;
+  bottom: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 200px;
+  animation: slideUp 1.5s ease-out 1.2s forwards;
+  opacity: 0;
+}
+
+.titleButton {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  letter-spacing: 0.2em;
+  font-family: serif;
+  padding: 15px;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.titleButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #ffcc00;
+  color: #ffcc00;
+  box-shadow: 0 0 15px rgba(255, 204, 0, 0.4);
+}
+
+/* アニメーション定義 */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+@keyframes titleGlow { 0%, 100% { text-shadow: 0 0 10px rgba(255,255,255,0.4); } 50% { text-shadow: 0 0 20px rgba(255,200,100,0.6); } }
+/* @keyframes dustAnim { 
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  20% { opacity: 0.4; }
+  80% { opacity: 0.4; }
+  100% { transform: translateY(-120px) translateX(20px); opacity: 0; }
+} */

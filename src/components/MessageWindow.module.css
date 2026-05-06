@@ -1,0 +1,69 @@
+/* MessageWindow.module.css */
+.container {
+  z-index: 100;
+  position: absolute;
+  bottom: 3%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 94%;
+  height: 25%;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 12px;
+  padding: 15px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  /* showプロパティで表示制御するので、ここではpointer-events等は書かなくてOK */
+}
+
+.nameTag {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #4db8ff;
+}
+
+.textArea {
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.triangle {
+  display: inline-block;
+  animation: bounce-fade 1s infinite;
+  margin-left: 8px;
+  color: #ffcc00;
+  font-size: 0.9rem;
+}
+
+.choicesWrapper {
+  position: absolute;
+  top: -180%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 80%;
+}
+
+.choiceBtn {
+  padding: 15px 20px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 2px solid #fff;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  transition: background-color 0.2s;
+}
+
+.choiceBtn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes bounce-fade {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(3px); opacity: 0.3; }
+}

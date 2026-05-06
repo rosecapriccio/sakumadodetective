@@ -1,0 +1,118 @@
+/* ItemMenu.module.css */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 20, 0.95);
+  color: white;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #4db8ff;
+  padding-bottom: 10px;
+  marginBottom: 20px;
+}
+
+.title {
+  margin: 0;
+  fontSize: 1.2rem;
+  color: #4db8ff;
+}
+
+.closeBtn {
+  padding: 5px 15px;
+  cursor: pointer;
+}
+
+.mainContent {
+  display: flex;
+  flex: 1;
+  gap: 15px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+/* 左側：リスト */
+.itemList {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-content: start;
+}
+
+.itemBtn {
+  padding: 12px;
+  text-align: left;
+  font-size: 0.9rem;
+  cursor: pointer;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  transition: all 0.2s;
+}
+
+.itemBtnActive {
+  background-color: #4db8ff;
+  color: black;
+  border-color: #4db8ff;
+}
+
+/* 右側：詳細 */
+.details {
+  flex: 1.2;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.imageBox {
+  width: 100%;
+  aspect-ratio: 1/1;
+  background-color: #000;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #4db8ff;
+}
+
+.itemImage {
+  max-width: 90%;
+  max-height: 90%;
+}
+
+.itemName {
+  margin: 0 0 10px 0;
+  font-size: 1.1rem;
+  border-bottom: 1px solid #4db8ff;
+}
+
+.description {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #ddd;
+}
+
+.emptyMsg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 0.9rem;
+  text-align: center;
+}

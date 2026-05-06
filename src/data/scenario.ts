@@ -26,6 +26,7 @@ export type Command =
       face?: FaceType;
       choices?: ChoiceOption[];
       cutin?: string;
+      nextScene?: string;
     }
   | {
       type: "bg";
@@ -60,7 +61,19 @@ export const scenario: Record<string, Command[]> = {
       type: "text",
       //charaId: "madoka",
       //face: "normal",
-      text: "「なんだこの部屋……気味が悪いな。」",
+      text: "なんだこの部屋……気味が悪いな。",
+    },
+    {
+      type: "text",
+      //charaId: "madoka",
+      //face: "normal",
+      text: "周りには絵が飾られており、周囲の目を惹く",
+    },
+    {
+      type: "text",
+      //charaId: "madoka",
+      //face: "normal",
+      text: "咲耶の前に当然あさひが現れる",
     },
     {
       type: "text",
@@ -87,13 +100,73 @@ export const scenario: Record<string, Command[]> = {
     },
     {
       type: "text",
+      charaId: "sakuya",
+      face: "normal",
+      text: "これださい！",
+      nextScene: "choice2",
+    },
+  ],
+  choice2: [
+    {
+      type: "text",
       charaId: "madoka",
       face: "angry",
       text: "「急にどこから出てきた！？」",
       choices: [
-        { label: "右の道へ行く", nextScene: "scene_right" },
-        { label: "左の道へ行く", nextScene: "scene_left" },
+        { label: "右の道へ行く", nextScene: "start2" },
+        { label: "左の道へ行く", nextScene: "start3" },
+        { label: "元の道へ行く", nextScene: "start4" },
       ],
+      nextScene: "scene_right",
+    },
+  ],
+  start2: [
+    {
+      type: "text",
+      text: "咲耶の前に当然あさひが現れる",
+    },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "normal",
+      text: "「プロデューサーさん、お疲れ様ですっ！」",
+    },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "normal",
+      text: "これを見てください！",
+      nextScene: "choice2",
+    },
+  ],
+  start3: [
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "normal",
+      text: "「プロれ様ですっ！」",
+    },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "normal",
+      text: "これを見ださい！",
+      nextScene: "choice2",
+    },
+  ],
+  start4: [
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "normal",
+      text: "「プですっ！」",
+    },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "normal",
+      text: "これを見い！",
+      nextScene: "choice2",
     },
   ],
   scene_right: [
@@ -158,6 +231,42 @@ export const scenario: Record<string, Command[]> = {
       face: "angry",
       text: "ありがとうあじゃ絶対無理やろもうていんあああああああああああああ",
     },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "angry",
+      text: "いや変人で結構",
+    },
+    {
+      type: "text",
+      charaId: "madoka",
+      face: "angry",
+      text: "「葛藤と格闘してました？」",
+    },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "angry",
+      text: "ありがとうあじゃ絶対無理やろもうていんあああああああああああああ",
+    },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "angry",
+      text: "いや変人で結構",
+    },
+    {
+      type: "text",
+      charaId: "madoka",
+      face: "angry",
+      text: "「葛藤と格闘してました？」",
+    },
+    {
+      type: "text",
+      charaId: "sakuya",
+      face: "angry",
+      text: "ありがとうあじゃ絶対無理やろもうていんあああああああああああああ",
+    },
   ],
   crime_scene: [
     {
@@ -192,56 +301,3 @@ export const scenario: Record<string, Command[]> = {
     },
   ],
 };
-
-// // data/scenario.ts
-// export type Choice = { label: string; nextScene: string };
-// export type ScenarioLine = {
-//   name: string;
-//   text: string;
-//   bgImage?: string;
-//   characterImage?: string;
-//   choices?: Choice[];
-// };
-// export type ScenarioData = Record<string, ScenarioLine[]>;
-
-// export const scenario: ScenarioData = {
-//   start: [
-//     { name: "", text: "ある日の午後。", bgImage: "#2c3e50" },
-//     {
-//       name: "主人公",
-//       text: "「ふぅ、やっと作業が終わったぞ。」",
-//       characterImage: "/images/characters/c1.png",
-//     },
-//     {
-//       name: "謎の声",
-//       text: "「お疲れ様！ちょっと息抜きしない？」",
-//       characterImage: "/images/characters/c2.png",
-//     },
-//     {
-//       name: "主人公",
-//       text: "「（どうしようかな…）」",
-//       choices: [
-//         { label: "外に出る", nextScene: "outside" },
-//         { label: "まだ作業を続ける", nextScene: "work" },
-//       ],
-//     },
-//   ],
-//   outside: [
-//     {
-//       name: "主人公",
-//       text: "「よし、少し散歩でもしてこよう。」",
-//       bgImage: "#27ae60",
-//       //characterImage: "🚶",
-//     },
-//     { name: "", text: "ー HAPPY END ー" },
-//   ],
-//   work: [
-//     {
-//       name: "主人公",
-//       text: "「いや、ここで休むわけにはいかない！」",
-//       bgImage: "#8e44ad",
-//       //characterImage: "🔥",
-//     },
-//     { name: "", text: "ー BAD END ー" },
-//   ],
-// };

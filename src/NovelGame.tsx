@@ -1,51 +1,56 @@
-"use client"; // ← これを一番上に追加！
-
 import { useState, useEffect, useRef } from "react";
 import { CHARA_DB } from "./data/characters";
-import { ITEM_DB } from "./data/items";
+//import { ITEM_DB } from "./data/items";
 import type { Hotspot } from "./data/scenario";
 import { scenario } from "./data/scenario";
+
 import TitleScreen from "./components/TitleScreen";
+import MessageWindow from "./components/MessageWindow";
+import ItemMenu from "./components/ItemMenu";
+import LogMenu from "./components/LogMenu";
 
 type ScreenState = "title" | "game" | "settings" | "ending";
 type GameMode = "dialogue" | "investigation";
-type ExplorationData = {
+type InvestigationData = {
   type: "investigation";
   bg: string;
   hotspots: Hotspot[];
 };
 
-// ==========================================
-// 3. ゲームコンポーネント本体
-// ==========================================
+//Screen - Scene - Lineの単位
 export default function NovelGame() {
   const [currentScreen, setCurrentScreen] = useState<ScreenState>("title");
   const [hasSaveData, setHasSaveData] = useState(false);
 
   const typingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // --- 状態管理 (Reactのキモ) ---
   const [currentScene, setCurrentScene] =
     useState<keyof typeof scenario>("start");
-  const [currentLine, setCurrentLine] = useState<number>(0); // 統合：これ一つで行数を管理します
+  const [currentLine, setCurrentLine] = useState<number>(0);
 
-  // ▼ 追加1：ゲームモード（デフォルトは会話）
+  // ゲームモード（会話パート／探索パート）
   const [gameMode, setGameMode] = useState<GameMode>("dialogue");
   // ▼ 追加2：今の探索シーンの定義を保存する
-  const [exploreDefinition, setExploreDefinition] = useState<ExplorationData>();
-  // NovelGame.tsx 内
+  const [exploreDefinition, setExploreDefinition] =
+    useState<InvestigationData>();
+
   const [showMessageWindow, setShowMessageWindow] = useState<boolean>(true); // 初期値はtrue（会話から始まるため）
 
   const [displayedText, setDisplayedText] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
-  const [logList, setLogList] = useState<{ name?: string; text: string }[]>([]);
-  const [isLogOpen, setIsLogOpen] = useState<boolean>(false);
+  //テキスト全文 クリック時に全文表示するために保持しておく
   const [fullText, setFullText] = useState<string>("");
 
-  // 初期状態は空っぽ
-  const [ownedItems, setOwnedItems] = useState<string[]>([]);
+  const [isLogOpen, setIsLogOpen] = useState<boolean>(false);
   const [isItemMenuOpen, setIsItemMenuOpen] = useState(false);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
+  const [readChoices, setReadChoices] = useState<string[]>([]);
+
+  // 取得アイテム
+  const [ownedItems, setOwnedItems] = useState<string[]>([]);
+
+  // ログ履歴
+  const [logList, setLogList] = useState<{ name?: string; text: string }[]>([]);
 
   // 背景とテキストデータの状態
   const [currentBg, setCurrentBg] = useState<string>("");
@@ -103,6 +108,11 @@ export default function NovelGame() {
     }
 
     if (currentData.type === "bg") {
+      if (currentBg === currentData.bg) {
+        setCurrentLine((prev) => prev + 1);
+        return;
+      }
+
       // 1. まず画面を真っ黒にする（フェードアウト開始）
       setIsFading(true);
 
@@ -231,14 +241,41 @@ export default function NovelGame() {
     }
 
     if (!currentData || currentData.type !== "text") return; // bg処理中はクリック無効
-    if (currentData.type === "text" && currentData.choices) return; // 選択肢がある時はクリック無効
-
+    if (currentData.type === "text" && currentData.choices && !allChoicesRead) {
+      //選択肢ある時はクリック無効ただし条件全てOKなら進む
+      return;
+    }
     if (isTyping) {
       // 文字が流れている途中にクリック：一気に全文字表示
       if (typingTimer.current) clearInterval(typingTimer.current);
       setDisplayedText(currentData.text || "");
       setIsTyping(false);
     } else {
+      if (currentData.type === "text" && currentData.nextScene) {
+        console.log("--- 既読判定デバッグ ---");
+        console.log("現在のシーン:", currentScene);
+        console.log("持っている既読リスト:", readChoices);
+        // console.log(
+        //   "今チェックすべきキー:",
+        //   currentData.choices.map((c) => `${currentScene}-${c.label}`),
+        // );
+        console.log("判定結果:", allChoicesRead);
+
+        const hasChoices = !!currentData.choices; // 選択肢があるか？
+        // A. 選択肢がない時：クリックで即遷移
+        // B. 選択肢がある時：全部読んでいれば遷移
+        if (!hasChoices || allChoicesRead) {
+          setLogList((prev) => [
+            ...prev,
+            { name: displayName, text: currentData.text },
+          ]);
+          setCurrentScene(currentData.nextScene as keyof typeof scenario);
+          setCurrentLine(0);
+          setDisplayedText("");
+          return;
+        }
+      }
+
       // 全文字出終わっている：次のセリフへ
       if (currentLine < sceneData.length - 1) {
         setLogList((prev) => [
@@ -254,14 +291,40 @@ export default function NovelGame() {
   // 選択肢を選んだときの処理
   const handleChoice = (choice: { label: string; nextScene: string }) => {
     if (!currentData || currentData.type !== "text") return;
+
+    const choiceKey = `${currentScene}-${choice.label}`;
+    setReadChoices((prev) => {
+      if (prev.includes(choiceKey)) return prev;
+      return [...prev, choiceKey];
+    });
+
     setLogList((prev) => [
       ...prev,
       { name: displayName, text: currentData.text || "" },
       { text: `▶ 【選択】${choice.label}` },
     ]);
+
     setDisplayedText("");
     setCurrentScene(choice.nextScene as keyof typeof scenario);
     setCurrentLine(0);
+  };
+
+  const currentReadCount = readChoices.filter((key) =>
+    key.startsWith(`${currentScene}-`),
+  ).length;
+
+  const totalChoices =
+    currentData.type === "text" && currentData.choices
+      ? currentData.choices.length
+      : 0;
+
+  const allChoicesRead = totalChoices > 0 && currentReadCount >= totalChoices;
+
+  const getDisplayText = () => {
+    if (allChoicesRead && currentData.type === "text") {
+      return "（よし、一通り話は聞けたな。次へ進もう。）";
+    }
+    return displayedText; // タイピング中の文字、または通常の文字
   };
 
   // 画面の振り分け
@@ -374,7 +437,7 @@ export default function NovelGame() {
         />
       )}
 
-      {/* カットイン */}
+      {/* 画像のカットイン */}
       {currentData.type === "text" && currentData.cutin && (
         <div
           style={{
@@ -402,114 +465,33 @@ export default function NovelGame() {
         </div>
       )}
 
-      <style>{`
-        @keyframes bounce-fade {
-          0%, 100% { transform: translateY(0); opacity: 1; }
-          50% { transform: translateY(3px); opacity: 0.3; }
-        }
-      `}</style>
-      {/* メッセージウィンドウ (bgコマンドの時は隠す) */}
+      {/* メッセージウィンドウ */}
       {(currentData.type == "text" ||
         currentData.type == "start_investigation") && (
-        <div
-          style={{
-            zIndex: 100,
-            position: "absolute",
-            bottom: "3%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "94%",
-            height: "25%",
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-            color: "#fff",
-            borderRadius: "12px",
-            padding: "15px",
-            boxSizing: "border-box",
-            border: "2px solid rgba(255, 255, 255, 0.4)",
-            display: showMessageWindow ? "block" : "none", // シンプルに消すならこれ
-            // opacity: showMessageWindow ? 1 : 0, // フワッと消したいならこっち
-            // transition: "opacity 0.3s",
-            pointerEvents: showMessageWindow ? "auto" : "none", // 消えている時は下のクリックを邪魔しない
-          }}
-        >
-          {displayName && (
-            <div
-              style={{
-                fontSize: "1.1rem",
-                fontWeight: "bold",
-                marginBottom: "8px",
-                color: "#4db8ff",
-              }}
-            >
-              {displayName}
-            </div>
-          )}
-
-          <div style={{ fontSize: "1.05rem", lineHeight: "1.7" }}>
-            {displayedText}
-            {!isTyping && displayedText !== "" && (
-              <span
-                style={{
-                  display: "inline-block",
-                  animation: "bounce-fade 1s infinite",
-                  marginLeft: "8px",
-                  color: "#ffcc00",
-                  fontSize: "0.9rem",
-                }}
-              >
-                ▼
-              </span>
-            )}
-          </div>
-
-          {currentData.type === "text" &&
-            currentData.choices &&
-            displayedText === currentData.text && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "-180%",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  width: "80%",
-                }}
-              >
-                {currentData.choices.map(
-                  (
-                    choice: { label: string; nextScene: string },
-                    index: number,
-                  ) => (
-                    <button
-                      key={index}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleChoice(choice);
-                      }}
-                      style={{
-                        padding: "15px 20px",
-                        fontSize: "1.1rem",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                        borderRadius: "8px",
-                        border: "2px solid #fff",
-                        backgroundColor: "rgba(0, 0, 0, 0.85)",
-                        color: "#fff",
-                        transition: "background-color 0.2s",
-                      }}
-                    >
-                      {choice.label}
-                    </button>
-                  ),
-                )}
-              </div>
-            )}
-        </div>
+        <MessageWindow
+          show={
+            (currentData.type === "text" ||
+              currentData.type === "start_investigation") &&
+            showMessageWindow
+          }
+          name={displayName}
+          text={getDisplayText()}
+          isTyping={isTyping}
+          choices={
+            currentData.type === "text" ? currentData.choices : undefined
+          }
+          showChoices={
+            currentData.type === "text" &&
+            displayedText === currentData.text &&
+            !allChoicesRead
+          }
+          onChoiceSelect={handleChoice}
+          readChoices={readChoices}
+          currentChoiceKeyPrefix={`${currentScene}-`} // 現在の行を特定するキー
+        />
       )}
 
-      {/* ログボタン */}
+      {/* 上部ボタン */}
       {currentData.type !== "bg" && (
         <div
           style={{
@@ -558,261 +540,15 @@ export default function NovelGame() {
 
       {/* ログ画面 */}
       {isLogOpen && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.85)",
-            color: "white",
-            zIndex: 500,
-            display: "flex",
-            flexDirection: "column",
-            padding: "20px",
-            boxSizing: "border-box",
-          }}
-        >
-          <div style={{ textAlign: "right", marginBottom: "10px" }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsLogOpen(false);
-              }}
-              style={{
-                padding: "10px 20px",
-                fontSize: "1.1rem",
-                cursor: "pointer",
-              }}
-            >
-              閉じる
-            </button>
-          </div>
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: "15px",
-              paddingRight: "10px",
-            }}
-          >
-            {logList.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  marginTop: "50px",
-                  color: "#aaa",
-                }}
-              >
-                ログはまだありません
-              </div>
-            ) : (
-              logList.map((log, index) => (
-                <div
-                  key={index}
-                  style={{
-                    borderBottom: "1px solid rgba(255,255,255,0.2)",
-                    paddingBottom: "10px",
-                    paddingLeft: log.text.startsWith("▶") ? "20px" : "0",
-                  }}
-                >
-                  {log.name && (
-                    <div
-                      style={{
-                        color: "#4db8ff",
-                        fontWeight: "bold",
-                        fontSize: "0.9rem",
-                        marginBottom: "3px",
-                      }}
-                    >
-                      {log.name}
-                    </div>
-                  )}
-                  <div style={{ lineHeight: "1.5" }}>{log.text}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <LogMenu logList={logList} onClose={() => setIsLogOpen(false)} />
       )}
 
-      {/* ========================================== */}
       {/* 証拠品リスト画面 */}
-      {/* ========================================== */}
       {isItemMenuOpen && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 20, 0.95)", // 少し青みのある黒でミステリーっぽく
-            color: "white",
-            zIndex: 500,
-            display: "flex",
-            flexDirection: "column",
-            padding: "20px",
-            boxSizing: "border-box",
-          }}
-        >
-          {/* ヘッダー */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              borderBottom: "2px solid #4db8ff",
-              paddingBottom: "10px",
-              marginBottom: "20px",
-            }}
-          >
-            <h2 style={{ margin: 0, fontSize: "1.2rem", color: "#4db8ff" }}>
-              証拠品・情報リスト
-            </h2>
-            <button
-              onClick={() => {
-                setIsItemMenuOpen(false);
-                setSelectedItemId(null);
-              }}
-              style={{ padding: "5px 15px", cursor: "pointer" }}
-            >
-              閉じる
-            </button>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flex: 1,
-              gap: "15px",
-              overflow: "hidden",
-            }}
-          >
-            {/* 左側：持っているアイテムのボタン一覧 */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: "10px",
-                alignContent: "start",
-              }}
-            >
-              {ownedItems.length === 0 ? (
-                <div
-                  style={{
-                    color: "#888",
-                    textAlign: "center",
-                    marginTop: "20px",
-                  }}
-                >
-                  まだ情報がありません
-                </div>
-              ) : (
-                ownedItems.map((id) => (
-                  <button
-                    key={id}
-                    onClick={() => setSelectedItemId(id)}
-                    style={{
-                      padding: "12px",
-                      textAlign: "left",
-                      fontSize: "0.9rem",
-                      cursor: "pointer",
-                      backgroundColor:
-                        selectedItemId === id
-                          ? "#4db8ff"
-                          : "rgba(255,255,255,0.1)",
-                      color: selectedItemId === id ? "black" : "white",
-                      border: "1px solid rgba(255,255,255,0.3)",
-                      borderRadius: "5px",
-                    }}
-                  >
-                    {ITEM_DB[id]?.name || "???"}
-                  </button>
-                ))
-              )}
-            </div>
-
-            {/* 右側：選択中アイテムの詳細表示 */}
-            <div
-              style={{
-                flex: 1.2,
-                backgroundColor: "rgba(255,255,255,0.05)",
-                padding: "15px",
-                borderRadius: "8px",
-                border: "1px solid rgba(255,255,255,0.1)",
-              }}
-            >
-              {selectedItemId ? (
-                <div>
-                  <div
-                    style={{
-                      width: "100%",
-                      aspectRatio: "1/1",
-                      backgroundColor: "#000",
-                      marginBottom: "15px",
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      border: "1px solid #4db8ff",
-                    }}
-                  >
-                    {/* 画像がある場合は表示、なければ仮のテキスト */}
-                    {ITEM_DB[selectedItemId].image ? (
-                      <img
-                        src={ITEM_DB[selectedItemId].image}
-                        style={{ maxWidth: "90%", maxHeight: "90%" }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: "0.8rem", color: "#4db8ff" }}>
-                        NO IMAGE
-                      </span>
-                    )}
-                  </div>
-                  <h3
-                    style={{
-                      margin: "0 0 10px 0",
-                      fontSize: "1.1rem",
-                      borderBottom: "1px solid #4db8ff",
-                    }}
-                  >
-                    {ITEM_DB[selectedItemId].name}
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: "0.85rem",
-                      lineHeight: "1.6",
-                      color: "#ddd",
-                    }}
-                  >
-                    {ITEM_DB[selectedItemId].description}
-                  </p>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#666",
-                    fontSize: "0.9rem",
-                    textAlign: "center",
-                  }}
-                >
-                  証拠品を選択して
-                  <br />
-                  ください
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <ItemMenu
+          ownedItems={ownedItems}
+          onClose={() => setIsItemMenuOpen(false)}
+        />
       )}
     </div>
   );
