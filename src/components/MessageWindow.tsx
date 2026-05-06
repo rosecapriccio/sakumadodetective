@@ -1,4 +1,4 @@
-import React from "react";
+//import React from "react";
 import styles from "./MessageWindow.module.css";
 
 // 親（NovelGame）から受け取るデータの型定義

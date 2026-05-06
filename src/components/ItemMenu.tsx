@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import styles from "./ItemMenu.module.css";
 import { ITEM_DB } from "../data/items";
 
