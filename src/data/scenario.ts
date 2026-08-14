@@ -83,7 +83,7 @@ export const scenario: Record<string, Command[]> = {
     {
       type: "text",
       charaId: "sakuya",
-      face: "normal",
+      face: "smile",
       text: "足元に何かが落ちていたよ。これを見てくれるかい？足元に何かが落ちていたよ。これを見てくれるかい？足元に何かが落ちていたよ。これを見てくれるかい？",
     },
     {
@@ -136,14 +136,14 @@ export const scenario: Record<string, Command[]> = {
     },
     {
       type: "text",
-      charaId: "sakuya",
+      charaId: "madoka",
       face: "normal",
       text: "ここが一番怪しいね。何か見つかるかもしれない。",
     },
     {
       type: "text",
-      charaId: "sakuya",
-      face: "normal",
+      charaId: "madoka",
+      face: "smile",
       text: "よし、周辺を詳しく調べてみようか。",
       nextScene: "choice2",
     },
