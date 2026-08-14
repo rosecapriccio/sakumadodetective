@@ -1,0 +1,134 @@
+/* === Main Game Container === */
+.mainContainer {
+  position: relative;
+  width: 100%;
+  max-width: var(--screen-max-width);
+  aspect-ratio: var(--screen-aspect-ratio);
+  background-size: cover;
+  background-position: center;
+  background-color: #000;
+  overflow: hidden;
+  cursor: default;
+  box-shadow: var(--screen-shadow);
+  user-select: none;
+  margin: var(--screen-margin) auto;
+}
+
+.mainContainer[data-background] {
+  background-image: var(--bg-image);
+}
+
+/* === Fade Overlay === */
+.fadeOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  transition: opacity 0.5s ease-in-out;
+  z-index: 200;
+  pointer-events: none;
+}
+
+/* === Hotspots (Investigation Mode) === */
+.hotspot {
+  position: absolute;
+  cursor: pointer;
+  z-index: 150;
+}
+
+/* 開発時用のヒント（デバッグ表示） */
+.hotspot.debug {
+  background-color: rgba(255, 0, 0, 0.3);
+  border: 2px solid red;
+}
+
+/* === Character Image === */
+.characterImage {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85%;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* === Cutscene Overlay === */
+.cutinContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-overlay-medium);
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cutinImage {
+  max-width: 80%;
+  max-height: 80%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+/* === Top Buttons Container === */
+.topButtonsContainer {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
+
+.topButton {
+  padding: 8px 15px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: 1px solid #fff;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.topButton:hover {
+  background-color: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.topButton:active,
+.topButton:focus {
+  background-color: rgba(0, 0, 0, 0.6);
+  box-shadow: none;
+  outline: none;
+}
+
+/* 証拠品ボタン */
+.topButton.itemButton {
+  background-color: rgba(0, 50, 100, 0.6);
+  border-color: #4db8ff;
+  color: #4db8ff;
+}
+
+.topButton.itemButton:hover {
+  background-color: rgba(0, 50, 100, 0.9);
+  box-shadow: 0 0 10px rgba(77, 184, 255, 0.4);
+}
+
+.topButton.itemButton:active,
+.topButton.itemButton:focus {
+  background-color: rgba(0, 50, 100, 0.6);
+  box-shadow: none;
+  outline: none;
+}
+
+/* === Error Screen === */
+.errorScreen {
+  background-color: #000;
+  height: 100vh;
+}

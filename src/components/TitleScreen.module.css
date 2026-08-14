@@ -3,17 +3,17 @@
 .wrapper {
   position: relative;
   width: 100%;
-  max-width: 430px;
-  aspect-ratio: 9/16;
-  margin: 0 auto;
+  max-width: var(--screen-max-width);
+  aspect-ratio: var(--screen-aspect-ratio);
+  margin: var(--screen-margin) auto;
   background-image: url('/images/title_bg.png');
   background-size: cover;
   background-position: center;
   background-color: #111;
   color: white;
-  font-family: serif;
   overflow: hidden;
   user-select: none;
+  box-shadow: var(--screen-shadow);
 }
 
 .fadeLayer {
@@ -38,14 +38,14 @@
 
 .title {
   position: absolute;
-  top: 22%;
+  top: 20%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 2.2rem;
+  font-size: clamp(1.9rem, 5vw, 2.6rem);
   width: 100%;
   text-align: center;
   margin: 0;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   color: #fff;
   animation: slideUp 1.5s ease-out 0.5s forwards, titleGlow 4s infinite 2s;
   opacity: 0;
@@ -53,13 +53,13 @@
 
 .buttonGroup {
   position: absolute;
-  bottom: 22%;
+  bottom: 18%;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  width: 200px;
+  gap: 16px;
+  width: min(220px, 62%);
   animation: slideUp 1.5s ease-out 1.2s forwards;
   opacity: 0;
 }
@@ -72,10 +72,9 @@
   color: #ddd;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 4px;
-  letter-spacing: 0.2em;
-  font-family: serif;
-  padding: 15px;
-  font-size: 1.1rem;
+  letter-spacing: 0.18em;
+  padding: 14px 12px;
+  font-size: 1rem;
   cursor: pointer;
 }
 

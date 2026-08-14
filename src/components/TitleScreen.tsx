@@ -28,20 +28,6 @@ export default function TitleScreen({
   return (
     <div className={styles.wrapper}>
       <div className={styles.fadeLayer}>
-        {/* 塵（ダスト）のエフェクト
-        {dusts.map((d) => (
-          <div
-            key={d.id}
-            className={styles.dust}
-            style={{
-              bottom: d.bottom,
-              left: d.left,
-              width: d.size,
-              height: d.size,
-            }}
-          />
-        ))} */}
-
         <h1 className={styles.title}>Detective x Sakumado</h1>
         <div className={styles.buttonGroup}>
           <button onClick={onStartNewGame} className={styles.titleButton}>

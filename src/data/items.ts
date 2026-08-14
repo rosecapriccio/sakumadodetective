@@ -1,4 +1,3 @@
-// 1. まず、アイテム1つ分の型を定義
 type ItemData = {
   name: string;
   description: string;

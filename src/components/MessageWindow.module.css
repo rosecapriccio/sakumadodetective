@@ -2,30 +2,49 @@
 .container {
   z-index: 100;
   position: absolute;
-  bottom: 3%;
+  bottom: 2%;
   left: 50%;
   transform: translateX(-50%);
-  width: 94%;
-  height: 25%;
+  width: 95%;
+  height: 27%;
   background-color: rgba(0, 0, 0, 0.8);
   color: #fff;
   border-radius: 12px;
-  padding: 15px;
+  padding: 3px;
   box-sizing: border-box;
   border: 2px solid rgba(255, 255, 255, 0.4);
-  /* showプロパティで表示制御するので、ここではpointer-events等は書かなくてOK */
 }
 
 .nameTag {
-  font-size: 1.1rem;
+  position: absolute;
+  top: -20px;
+  left: 24px;
+  padding: 4px 18px;
+  border-radius: 4px;
   font-weight: bold;
-  margin-bottom: 8px;
-  color: #4db8ff;
+  font-size: 16px;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.nameTag.madoka {
+  background-color: var(--color-char-madoka);
+  color: #fff;
+  border-color: rgba(190, 30, 62, 0.6);
+}
+
+.nameTag.sakuya {
+  background-color: var(--color-char-sakuya);
+  color: #fff;
+  border-color: rgba(0, 96, 71, 0.6);
 }
 
 .textArea {
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1.7;
+  padding: 10px 20px;
+  margin-top: 10px;
 }
 
 .triangle {

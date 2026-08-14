@@ -18,7 +18,7 @@ export default function ItemMenu({ ownedItems, onClose }: ItemMenuProps) {
         <button
           className={styles.closeBtn}
           onClick={() => {
-            setSelectedId(null); // 閉じる時に選択をリセット
+            setSelectedId(null);
             onClose();
           }}
         >

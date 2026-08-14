@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { CHARA_DB } from "./data/characters";
 //import { ITEM_DB } from "./data/items";
 import type { Hotspot } from "./data/scenario";
 import { scenario } from "./data/scenario";
+import styles from "./NovelGame.module.css";
 
 import TitleScreen from "./components/TitleScreen";
 import MessageWindow from "./components/MessageWindow";
@@ -30,7 +32,7 @@ export default function NovelGame() {
 
   // ゲームモード（会話パート／探索パート）
   const [gameMode, setGameMode] = useState<GameMode>("dialogue");
-  // ▼ 追加2：今の探索シーンの定義を保存する
+
   const [exploreDefinition, setExploreDefinition] =
     useState<InvestigationData>();
 
@@ -62,7 +64,7 @@ export default function NovelGame() {
   const triggerTyping = (text: string) => {
     if (typingTimer.current) clearInterval(typingTimer.current);
 
-    setFullText(text); // フルテキストを保存
+    setFullText(text);
     setDisplayedText("");
     setIsTyping(true);
 
@@ -85,25 +87,21 @@ export default function NovelGame() {
   useEffect(() => {
     if (!currentData || currentScreen !== "game") return;
 
-    // --- 探索パート開始コマンド (ここを追加！) ---
     if (currentData.type === "start_investigation") {
       const exploreSceneId = currentData.exploreScene;
       const exploreDef = scenario[exploreSceneId][0]; // scenario[exploreSceneId]
 
       if (exploreDef && exploreDef.type === "investigation") {
-        // この中では、TypeScriptが「exploreDefは探索データだ！」と確信してくれます
         setGameMode("investigation");
-        setShowMessageWindow(false); // 探索が始まったらウィンドウを消す！
-        setExploreDefinition(exploreDef); // これでエラーが消えるはず
-        setCurrentBg(exploreDef.bg); // これもOK！
+        setShowMessageWindow(false);
+        setExploreDefinition(exploreDef);
+        setCurrentBg(exploreDef.bg);
       } else {
         console.error("指定されたシーンは探索データではありませんでした");
       }
 
-      // テキストウィンドウを一旦クリア
       setDisplayedText("");
 
-      // この useEffect はここで終わり（setCurrentLineはしない）
       return;
     }
 
@@ -162,13 +160,13 @@ export default function NovelGame() {
     }
   }, []);
 
-  // オートセーブ機能（背景情報も一緒に保存すると復帰時に真っ黒になりません）
+  // オートセーブ機能
   useEffect(() => {
     if (currentScreen !== "game") return;
     const saveData = {
       scene: currentScene,
       line: currentLine,
-      bg: currentBg, // ▼ 修正2：セーブデータに今の背景も記録する
+      bg: currentBg,
     };
     localStorage.setItem("my_novel_autosave", JSON.stringify(saveData));
   }, [currentScene, currentLine, currentScreen, currentBg]);
@@ -201,7 +199,7 @@ export default function NovelGame() {
     localStorage.removeItem("my_novel_autosave");
     setCurrentScene("start");
     setCurrentLine(0);
-    setCurrentBg(""); // 背景もリセット
+    setCurrentBg("");
     setDisplayedText("");
     setCurrentScreen("game");
   };
@@ -213,27 +211,23 @@ export default function NovelGame() {
       const saveData = JSON.parse(savedDataString);
       setCurrentScene(saveData.scene);
       setCurrentLine(saveData.line);
-      setCurrentBg(saveData.bg || ""); // 背景を復元
+      setCurrentBg(saveData.bg || "");
       setDisplayedText("");
     }
     setCurrentScreen("game");
   };
 
-  // クリックしたときの処理（次へ）
   const handleNext = () => {
     if (isLogOpen || isItemMenuOpen) return;
-    // ▼ 探索モード中の処理を追加
-    // --- 探索モード中の挙動 ---
+
     if (gameMode === "investigation") {
-      if (!showMessageWindow) return; // ウィンドウが出てない時は無視
+      if (!showMessageWindow) return;
 
       if (isTyping) {
-        // 1回目：タイピング中なら一気に全表示
         if (typingTimer.current) clearInterval(typingTimer.current);
         setDisplayedText(fullText);
         setIsTyping(false);
       } else {
-        // 2回目：終わってたらウィンドウを閉じる
         setShowMessageWindow(false);
         setDisplayedText("");
       }
@@ -261,9 +255,7 @@ export default function NovelGame() {
         // );
         console.log("判定結果:", allChoicesRead);
 
-        const hasChoices = !!currentData.choices; // 選択肢があるか？
-        // A. 選択肢がない時：クリックで即遷移
-        // B. 選択肢がある時：全部読んでいれば遷移
+        const hasChoices = !!currentData.choices;
         if (!hasChoices || allChoicesRead) {
           setLogList((prev) => [
             ...prev,
@@ -350,117 +342,71 @@ export default function NovelGame() {
   }
 
   // もしデータが存在しない場合はエラーを防ぐため空っぽの画面を出して守る
-  if (!currentData)
-    return <div style={{ backgroundColor: "#000", height: "100vh" }} />;
+  if (!currentData) return <div className={styles.errorScreen} />;
 
   return (
     <div
+      className={styles.mainContainer}
       onClick={handleNext}
       style={{
-        position: "relative",
-        width: "100%",
-        maxWidth: "430px",
-        aspectRatio: "9/16",
-        backgroundImage: currentBg ? `url(${currentBg})` : "none", // ▼ 修正4：背景画像をここで適用！
-        backgroundColor: "#000",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        margin: "0 auto",
-        overflow: "hidden",
-        cursor:
-          currentData.type === "text" && currentData.choices
-            ? "default"
-            : "pointer",
-        boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-        userSelect: "none",
+        backgroundImage: currentBg ? `url(${currentBg})` : "none",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          backgroundColor: "black",
-          // isFadingがtrueなら不透明(1)、falseなら透明(0)
-          opacity: isFading ? 1 : 0,
-          // 0.5秒かけてフワッと変化させるCSSの魔法
-          transition: "opacity 0.5s ease-in-out",
-          zIndex: 200, // 画面の全要素（立ち絵やUI）より手前に被せる
-          pointerEvents: "none", // これが無いとクリックを吸い取ってゲームが進行しなくなるので必須！
-        }}
-      />
+      <AnimatePresence>
+        <motion.div
+          key={currentBg || "default-bg"}
+          className={styles.fadeOverlay}
+          initial={{ opacity: 1 }}
+          animate={{ opacity: isFading ? 1 : 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        />
+      </AnimatePresence>
 
       {gameMode === "investigation" &&
         exploreDefinition &&
         exploreDefinition.hotspots.map((h: Hotspot) => (
           <div
             key={h.id}
+            className={`${styles.hotspot} ${styles.debug}`}
             onClick={(e) => {
-              e.stopPropagation(); // 背景のクリック進行を防ぐ
-
-              setShowMessageWindow(true); // メッセージをセットすると同時にウィンドウを出す！
+              e.stopPropagation();
+              setShowMessageWindow(true);
               triggerTyping(h.text);
             }}
             style={{
-              position: "absolute",
-              // %指定で位置とサイズを決める
-              left: `${h.percentX - h.percentWidth / 2}%`, // 中心点を合わせるための計算
+              left: `${h.percentX - h.percentWidth / 2}%`,
               top: `${h.percentY - h.percentHeight / 2}%`,
               width: `${h.percentWidth}%`,
               height: `${h.percentHeight}%`,
-              cursor: "pointer",
-
-              // --- 開発時用のヒント ---
-              backgroundColor: "rgba(255, 0, 0, 0.3)", // 赤い半透明にして領域を見えるようにする
-              border: "2px solid red",
-              zIndex: 150, // 立ち絵やウィンドウより手前
             }}
           />
         ))}
 
       {/* 立ち絵 */}
-      {displayImage && currentData.type !== "bg" && (
-        <img
-          src={displayImage}
-          alt="character"
-          style={{
-            position: "absolute",
-            bottom: "25%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            height: "60%",
-            pointerEvents: "none",
-            userSelect: "none",
-          }}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {displayImage && currentData.type !== "bg" && (
+          <motion.img
+            key={displayImage}
+            src={displayImage}
+            alt="character"
+            className={styles.characterImage}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            style={{ x: "-50%" }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* 画像のカットイン */}
       {currentData.type === "text" && currentData.cutin && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
-            zIndex: 50,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
+        <div className={styles.cutinContainer}>
           <img
             src={`${currentData.cutin}`}
             alt="cutin"
-            style={{
-              maxWidth: "80%",
-              maxHeight: "80%",
-              boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
-            }}
+            className={styles.cutinImage}
           />
         </div>
       )}
@@ -487,50 +433,27 @@ export default function NovelGame() {
           }
           onChoiceSelect={handleChoice}
           readChoices={readChoices}
-          currentChoiceKeyPrefix={`${currentScene}-`} // 現在の行を特定するキー
+          currentChoiceKeyPrefix={`${currentScene}-`}
         />
       )}
 
       {/* 上部ボタン */}
       {currentData.type !== "bg" && (
-        <div
-          style={{
-            position: "absolute",
-            top: "10px",
-            right: "10px",
-            display: "flex",
-            gap: "10px",
-            zIndex: 10,
-          }}
-        >
+        <div className={styles.topButtonsContainer}>
           <button
+            className={styles.topButton}
             onClick={(e) => {
               e.stopPropagation();
               setIsLogOpen(true);
-            }}
-            style={{
-              padding: "8px 15px",
-              backgroundColor: "rgba(0,0,0,0.6)",
-              color: "white",
-              border: "1px solid white",
-              borderRadius: "5px",
-              cursor: "pointer",
             }}
           >
             ログ
           </button>
           <button
+            className={`${styles.topButton} ${styles.itemButton}`}
             onClick={(e) => {
               e.stopPropagation();
               setIsItemMenuOpen(true);
-            }}
-            style={{
-              padding: "8px 15px",
-              backgroundColor: "rgba(0,50,100,0.6)",
-              color: "white",
-              border: "1px solid #4db8ff",
-              borderRadius: "5px",
-              cursor: "pointer",
             }}
           >
             証拠品
