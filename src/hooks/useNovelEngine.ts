@@ -1,18 +1,13 @@
 import { useState, useEffect } from "react";
-import type { Hotspot } from "../data/scenario";
 import { scenario } from "../data/scenario";
 import { useTypewriter } from "./useTypewriter";
 import { useSaveGame } from "./useSaveGame";
 import { useCharacterDisplay } from "./useCharacterDisplay";
 import { usePreloadImages } from "./usePreloadImages";
+import { useInvestigationMode } from "./useInvestigationMode";
 
 export type ScreenState = "title" | "game" | "settings" | "ending";
-export type GameMode = "dialogue" | "investigation";
-export type InvestigationData = {
-  type: "investigation";
-  bg: string;
-  hotspots: Hotspot[];
-};
+export type { GameMode, InvestigationData } from "./useInvestigationMode";
 
 export function useNovelEngine() {
   const [currentScreen, setCurrentScreen] = useState<ScreenState>("title");
@@ -20,14 +15,6 @@ export function useNovelEngine() {
   const [currentScene, setCurrentScene] =
     useState<keyof typeof scenario>("start");
   const [currentLine, setCurrentLine] = useState<number>(0);
-
-  // ゲームモード（会話パート／探索パート）
-  const [gameMode, setGameMode] = useState<GameMode>("dialogue");
-
-  const [exploreDefinition, setExploreDefinition] =
-    useState<InvestigationData>();
-
-  const [showMessageWindow, setShowMessageWindow] = useState<boolean>(true); // 初期値はtrue（会話から始まるため）
 
   const [isLogOpen, setIsLogOpen] = useState<boolean>(false);
   const [isItemMenuOpen, setIsItemMenuOpen] = useState(false);
@@ -38,9 +25,7 @@ export function useNovelEngine() {
   const [ownedItems, setOwnedItems] = useState<string[]>([]);
 
   // ログ履歴
-  const [logList, setLogList] = useState<{ name?: string; text: string }[]>(
-    [],
-  );
+  const [logList, setLogList] = useState<{ name?: string; text: string }[]>([]);
 
   // 背景の状態
   const [currentBg, setCurrentBg] = useState<string>("");
@@ -58,6 +43,7 @@ export function useNovelEngine() {
   });
   const { displayName, displayImage, displayCharaKey } =
     useCharacterDisplay(currentData);
+  const investigation = useInvestigationMode({ typewriter });
   usePreloadImages();
 
   useEffect(() => {
@@ -68,9 +54,7 @@ export function useNovelEngine() {
       const exploreDef = scenario[exploreSceneId][0]; // scenario[exploreSceneId]
 
       if (exploreDef && exploreDef.type === "investigation") {
-        setGameMode("investigation");
-        setShowMessageWindow(false);
-        setExploreDefinition(exploreDef);
+        investigation.startInvestigation(exploreDef);
         setCurrentBg(exploreDef.bg);
       } else {
         console.error("指定されたシーンは探索データではありませんでした");
@@ -118,7 +102,7 @@ export function useNovelEngine() {
     if (
       currentScreen === "game" &&
       currentData?.type === "text" &&
-      gameMode === "dialogue"
+      investigation.gameMode === "dialogue"
     ) {
       typewriter.triggerTyping(currentData.text);
     }
@@ -147,21 +131,8 @@ export function useNovelEngine() {
     setCurrentScreen("game");
   };
 
-  const handleNext = () => {
-    if (isLogOpen || isItemMenuOpen) return;
-
-    if (gameMode === "investigation") {
-      if (!showMessageWindow) return;
-
-      if (typewriter.isTyping) {
-        typewriter.skipTyping();
-      } else {
-        setShowMessageWindow(false);
-        typewriter.clearText();
-      }
-      return;
-    }
-
+  // 会話モード中のクリック（次へ進む）処理
+  const handleDialogueNext = () => {
     if (!currentData || currentData.type !== "text") return; // bg処理中はクリック無効
     if (currentData.type === "text" && currentData.choices && !allChoicesRead) {
       //選択肢ある時はクリック無効ただし条件全てOKなら進む
@@ -197,6 +168,17 @@ export function useNovelEngine() {
     }
   };
 
+  const handleNext = () => {
+    if (isLogOpen || isItemMenuOpen) return;
+
+    if (investigation.gameMode === "investigation") {
+      investigation.handleInvestigationNext();
+      return;
+    }
+
+    handleDialogueNext();
+  };
+
   // 選択肢を選んだときの処理
   const handleChoice = (choice: { label: string; nextScene: string }) => {
     if (!currentData || currentData.type !== "text") return;
@@ -216,12 +198,6 @@ export function useNovelEngine() {
     typewriter.clearText();
     setCurrentScene(choice.nextScene as keyof typeof scenario);
     setCurrentLine(0);
-  };
-
-  // 探索モードのホットスポットをクリックしたときの処理
-  const handleHotspotClick = (h: Hotspot) => {
-    setShowMessageWindow(true);
-    typewriter.triggerTyping(h.text);
   };
 
   const currentReadCount = readChoices.filter((key) =>
@@ -248,9 +224,9 @@ export function useNovelEngine() {
     hasSaveData: saveGame.hasSaveData,
     currentScene,
     currentData,
-    gameMode,
-    exploreDefinition,
-    showMessageWindow,
+    gameMode: investigation.gameMode,
+    exploreDefinition: investigation.exploreDefinition,
+    showMessageWindow: investigation.showMessageWindow,
     displayedText: typewriter.displayedText,
     isTyping: typewriter.isTyping,
     isLogOpen,
@@ -271,6 +247,6 @@ export function useNovelEngine() {
     handleContinueGame,
     handleNext,
     handleChoice,
-    handleHotspotClick,
+    handleHotspotClick: investigation.handleHotspotClick,
   };
 }

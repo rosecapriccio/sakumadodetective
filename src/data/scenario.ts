@@ -1,4 +1,7 @@
 import type { CharacterId, FaceType } from "./characters";
+import bgVenue from "../assets/images/bg/venue.png";
+import bgWarehouse from "../assets/images/bg/warehouse.png";
+import cutinHouki from "../assets/images/cutin/houki.png";
 
 export type ChoiceOption = {
   label: string;
@@ -54,7 +57,7 @@ export const scenario: Record<string, Command[]> = {
       type: "bg",
       //charaId: "madoka",
       //face: "normal",
-      bg: "/sakumadodetective/images/bg/venue.png",
+      bg: bgVenue,
     },
     {
       type: "text",
@@ -90,7 +93,7 @@ export const scenario: Record<string, Command[]> = {
       type: "text",
       name: "",
       text: "泥にまみれた、古ぼけた石板だった。",
-      cutin: "/sakumadodetective/images/cutin/houki.png",
+      cutin: cutinHouki,
     },
     {
       type: "get_item",
@@ -189,7 +192,7 @@ export const scenario: Record<string, Command[]> = {
       type: "bg",
       //charaId: "madoka",
       //face: "normal",
-      bg: "/sakumadodetective/images/bg/warehouse.png",
+      bg: bgWarehouse,
     },
     {
       type: "text",
@@ -286,7 +289,7 @@ export const scenario: Record<string, Command[]> = {
   crime_scene: [
     {
       type: "investigation",
-      bg: "/sakumadodetective/images/bg/warehouse.png",
+      bg: bgWarehouse,
       hotspots: [
         {
           id: "sticker2",

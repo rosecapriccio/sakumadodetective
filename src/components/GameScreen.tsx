@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import type { useNovelEngine } from "../hooks/useNovelEngine";
 import styles from "../NovelGame.module.css";
 
@@ -49,16 +49,12 @@ export default function GameScreen({ engine }: GameScreenProps) {
         backgroundImage: currentBg ? `url(${currentBg})` : "none",
       }}
     >
-      <AnimatePresence>
-        <motion.div
-          key={currentBg || "default-bg"}
-          className={styles.fadeOverlay}
-          initial={{ opacity: 1 }}
-          animate={{ opacity: isFading ? 1 : 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-        />
-      </AnimatePresence>
+      <motion.div
+        className={styles.fadeOverlay}
+        initial={{ opacity: 1 }}
+        animate={{ opacity: isFading ? 1 : 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      />
 
       {gameMode === "investigation" && exploreDefinition && (
         <InvestigationHotspots
